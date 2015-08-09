@@ -82,8 +82,79 @@ IronAssembler may assemble from one file containing assembly instructions. This 
 	processor-register OR
 	stack-index OR
 	numeric-literal OR
-	string-literal
+	string-literal then
+	whitespace
 	
   processor-register:
     One of { eax ebx ecx edx eex efx egx ehx eflags eip esp ebp ssp sbp erb nul }, case insensitive
+	
+  stack-index:
+	stack[ then
+	Decimal number 0 to 4294967295 inclusive then
+	]
+
+  numeric-literal:
+    Decimal number -9223372036854775808 to 9223372036854775807 inclusive then
+	: then
+	One of { u s } then
+	One of { 1 2 4 8 }
+
+  string-literal:
+	Quotation mark (U+0022) then
+	Zero or more characters OR string-escape-sequences then
+	Quotation mark (U+0022)
+
+  string-escape-sequences:
+    One of { \r \n \t \0 \" \\ }
 ```
+
+## Stages of Assembling
+
+### Stage 1: Loading Input
+In the first stage, the entire input file is loaded into memory. It is then split on `\r, \n, or \r\n` into an array of lines. Each line is trimmed of whitespace on both sides.
+
+### Stage 2: Parsing
+Each line of the input file is here converted into the following structure:
+
+```
+	Dictionary<string, Label> Labels
+		KeyValuePair<string, Label> LabelKVP
+			Key: name of label
+			Value:
+				class Label
+				{
+					string Name;
+					List<string> Instructions;
+				}
+```
+
+### Stage 3: Assembling Labels
+The instructions in each label are then assembled, converting the string value into an `AssembledInstruction`.
+
+```
+class AssembledInstruction
+{
+	byte[] AssembledBytes;
+	List<string> LabelReferences;
+}
+```
+
+Each `AssembledInstruction` maintains a list of zero to three references to other labels that are resolved in the Linking stage. The bytes that will store the addresses of the labels, if present, have been initialized to `0xCCCCCCCCCCCCCCCC`, `0xDDDDDDDDDDDDDDDD`, and `0xEEEEEEEEEEEEEEEE`, respectively.
+
+AssembledInstructions are stored within AssembledLabels.
+
+```
+class AssembledLabel
+{
+	string Name;
+	List<AssembledInstructions> Instructions;
+	ulong Address { get; set; }
+	ulong CodeSize { get; }
+}
+```
+
+### Stage 4: Linking
+The assembled labels must then be linked. First, a running sum of all the code sizes of each label is tallied in the order the labels were defined in the input file, and at each step of the sum, the `Address` property of the current assembled label has the sum assigned to it. Next, all assembled instructions are enumerated, in the order that the labels were defined in the input file and in the order they were defined in the label. Each assembled instruction will have the placeholder values for any label references replaced with the actual address of the label.
+
+### Stage 5: Concatenation
+Finally, all instructions are concatenated into one large byte array and written to disk.
