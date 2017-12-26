@@ -43,19 +43,24 @@ Data Structures:
 
 Code Structure:
 	Data Classes:
-		IronAssembler.Data.ParsedInstruction with members {Mnemonic, Size, Operand1, Operand2, Operand3}
+		IronAssembler.Data.ParsedInstruction with members {Mnemonic, Size, Operand1Text, Operand2Text, Operand3Text}
 		IronAssembler.Data.ParsedBlock with members {Name, Instructions}
 		IronAssembler.Data.ParsedStringTable with members {Strings}
 		IronAssembler.Data.ParsedFile with members {Blocks, StringTable}
 		IronAssembler.Data.AssembledInstruction with members {Bytes, Operand1Label, Operand2Label, Operand3Label}
 		IronAssembler.Data.AssembledBlock with members {Name, Instructions, FirstInstructionAddress}
 		IronAssembler.Data.AssembledStringsTable with members {Bytes}
-		IronAssembler.Data.AssembledFile {Blocks, StringTable}
+		IronAssembler.Data.AssembledFile with members {Blocks, StringTable}
+		IronAssembler.Data.InstructionInfo with members {ProperName, Mnemonic, Opcode, NeedsSize, OperandCount, CanUseLabels}
+		IronAssembler.Data.InstructionTable with members {GetInstructionInfo()}
 	Processing Classes:
 		IronAssembler.IO
 		IronAssembler.Parser
 		IronAssembler.Assembler
 		IronAssembler.Linker
+	Enumerations:
+		IronAssembler.Verbosity {Minimal, Stages, High, Verbose}
+		IronAssembler.OperandSize {Byte, Word, DWord, QWord}
 
 Assembly Process [possible errors in brackets]:
 	Stage 1: Loading
