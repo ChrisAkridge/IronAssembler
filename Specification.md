@@ -11,9 +11,10 @@ IronAssembler may assemble from one file containing assembly instructions. This 
 
 ```
   assembly-file:
-    Zero or more label-sections
+    Zero or more blocks then
+    string-table
 
-  label-section
+  block:
     label then
     colon (U+003A) then
     newline
@@ -43,8 +44,17 @@ IronAssembler may assemble from one file containing assembly instructions. This 
   whitespace:
     Space (U+0020) OR
     Tab (U+0009)
-  
+
   memory-address:
+    memory-address-with-pointer OR
+    memory-address-non-pointer
+
+  memory-address-with-pointer:
+    * then
+    0x then
+    8 hexadecimal-digit
+
+  memory-address-non-pointer:
     0x then
     8 hexadecimal-digits
 
@@ -60,53 +70,86 @@ IronAssembler may assemble from one file containing assembly instructions. This 
     newline
 
   zero-operand-instruction:
-    One of { nop ret end add sub mult div mod inv eq ineq lt gt lteq gteq and or not bwnot bwand bwor bwxor bwlshift bwrshift }, case insensitive
+    One of { nop end ret stackargs add sub mult div mod inc dec bwand bwor bwxor lshift rshift land lor lxor lnot cmp fadd sub fmult fidv fmod fcmp fsqrt }, case insensitive
 
   one-operand-instruction:
-    One of { jmp jmpa call calla push pop peek stackalloc hwcall setflag clearflag testflag toggleflag }, case insensitive then
-	whitespace then
-	address-block
+    One of { mov push pop arrayread arraywrite }, case insensitive then
+    operand-size then
+    whitespace then
+    address-block
 
   two-operand-instruction:
-	One of { jz jnz mov notl bwnotl arrayalloc deref cbyte csbyte cshort cushort cint cuint clong culong csing cdouble }, case insensitive then
-	whitespace then
-	2 address-blocks
+    One of { }, case insensitive then
+    operand-size then
+    whitespace then
+    2 address-blocks
 
   three-operand-instruction:
-	One of { je jne jlt jgt jlte jgte addl subl multl divl modl ineql ltl gtl lteql gteql andl orl bwandl bworl bwxorl bwlshitl bwrshiftl arrayaccess }, case insensitive then
-	whitespace then
-	3 address-blocks
+    One of { addl subl multl divl modl incl decl bwandl bworl bwxorl bwnotl lshiftl rshiftl landl lorl lxorl lnotl cmpl }, case insensitive then
+    operand-size then
+    whitespace then
+    3 address-blocks
+
+  movln-instruction:
+    movln then
+    3 address-blocks
+
+  operand-size:
+    One of { BYTE WORD DWORD QWORD }, case-sensitive
 
   address-block:
     memory-address OR
-	processor-register OR
-	stack-index OR
-	numeric-literal OR
-	string-literal then
-	whitespace
-	
+    processor-register OR
+    processor-register-pointer OR
+    processor-register-pointer-offset OR
+    numeric-literal OR
+    string-table-entry OR
+    label-ref then
+    whitespace
+
   processor-register:
-    One of { eax ebx ecx edx eex efx egx ehx eflags eip esp ebp ssp sbp erb nul }, case insensitive
-	
-  stack-index:
-	stack[ then
-	Decimal number 0 to 4294967295 inclusive then
-	]
+    One of { eax ebx ecx edx eex efx egx ehx eflags eip esp ebp erp }, case insensitive
+
+  processor-register-pointer:
+    * then
+    One of { eax ebx ecx edx eex efx egx ehx eflags eip esp ebp erp }, case insensitive
+
+  processor-register-pointer-offset:
+    * then
+    One of { eax ebx ecx edx eex efx egx ehx eflags eip esp ebp erp }, case insensitive then
+    + OR - then
+    decimal number 0 to 2147483647 inclusive
 
   numeric-literal:
-    Decimal number -9223372036854775808 to 9223372036854775807 inclusive then
-	: then
-	One of { u s } then
-	One of { 1 2 4 8 }
+    Decimal number -9223372036854775808 to 9223372036854775807 inclusive
+
+  string-table-entry:
+    str: then
+    Decimal number
+
+  label-ref:
+    One label-start-character then
+    Zero or more label-characters
+
+  string-table:
+    strings: then
+    Zero or more string-table-literal
+
+  string-table-literal:
+    Decimal number then
+    : then
+    string-literal
 
   string-literal:
-	Quotation mark (U+0022) then
-	Zero or more characters OR string-escape-sequences then
-	Quotation mark (U+0022)
+    Quotation mark (U+0022) then
+    Zero or more characters OR string-escape-sequences then
+    Quotation mark (U+0022)
 
   string-escape-sequences:
     One of { \r \n \t \0 \" \\ }
 ```
+
+All instructions, labels, and string table literals must be on one line. There can be arbitrary amounts of whitespace inside of an between lines.
 
 ## Stages of Assembling
 
@@ -158,3 +201,23 @@ The assembled labels must then be linked. First, a running sum of all the code s
 
 ### Stage 5: Concatenation
 Finally, all instructions are concatenated into one large byte array and written to disk.
+
+## Code Implementation Map
+Data types:
+```
+IronAsssembler.Components.Parsed:
+  Instruction: Represents a parsed-but-not-assembled instruction. Stores the local (inside the label) and global (inside the program) instruction number.
+  Label: Represents a named list of instructions.
+  ParsedFile: Represents a dictionary of labels with their names and a string table.
+IronAssembler.Components.Assembled:
+  AssembledInstruction: Represents an assembled instruction as an array of bytes along with the names of any labels referenced in the instruction.
+  AssembledLabel: Represents a named list of assembled instructions.
+```
+
+Stage processors:
+```
+  IronAssembler.IO: Reads and writes files.
+  IronAssembler.Parser: Converts a list of strings into a ParsedFile.
+  IronAssembler.Assembler: Assembles each instruction into a binary form.
+  IronAssembler.Linker: Links every assembled label into a single group of bytes, substituting known label addresses for placeholders.
+```

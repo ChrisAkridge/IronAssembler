@@ -1,0 +1,171 @@
+Usage: IronAssembler "path/to/file.iasm" "path/to/output.iexe" /[m|s|h|v]
+
+"path/to/file.iasm": Path to the file to assemble.
+"path/to/output.iasm" Path for the resulting executable file.
+/[m|s|h|v]: Verbosity level of the output.
+	m: Minimal, only prints assembly started/completed and errors.
+	s: Stages, prints Minimal messages and the start and end of each stage.
+	h: High, prints Stages messages and benchmarks and information within stages.
+	v: Verbose, prints High messages and ???
+
+Assumptions:
+	- Every multi-byte construct (opcodes, addresses, offsets) except UTF-8 strings (but not their prefixed length) MUST be stored in little-endian form.
+	- All addresses refer to addresses in the overall file.
+
+Data Structures:
+	Raw File:
+		- A list of the lines of the provided IASM file, without any empty lines. All lines have whitespace trimmed from both ends.
+	Label Declarations:
+		- A dictionary of the labels in the file and on which line their declaration is.
+		- Separately, outside the dictionary, a property denotes the line of the "strings:" label.
+	Parsed Instruction:
+		- A data type with string members {Mnemonic, Size, Operand1, Operand2, Operand3}. Any members not present in the instruction (i.e. the second operand of JMP), are null.
+	Parsed Block:
+		- A data type storing the name of a label and all the parsed instruction in it, in the order they were declared in the file.
+	Parsed String Table:
+		- A list of strings, in the order they were declared in the file.
+	Parsed File:
+		- A list of parsed blocks, in the order they were declared in the file, and a parsed string table.
+	Byte Stream:
+		- A data stream to which bytes can be read from or written to. To "emit" means to write to the end of the stream.
+	Assembled Instruction:
+		- A data type containing a byte array representing the assembled opcode, flags byte, and operands of the instruction.
+		- Also has three string members {Operand1Label, Operand2Label, and Operand3Label} that store any labels stored in operands.
+	Assembled Block:
+		- A data type storing the name of a label and a list of assembled instructions.
+		- Also stores the address of the block in the overall file.
+	Assembled Strings Table:
+		- A byte array containing the following:
+			- First, a table of the start addresses of all strings in the table.
+			- Then, a list of length-prefixed strings encoded in UTF-8 in the order they were declared in the file.
+	Assembled File:
+		- A list of assembled blocks and an assembled string table.
+
+Code Structure:
+	Data Classes:
+		IronAssembler.Data.ParsedInstruction with members {Mnemonic, Size, Operand1, Operand2, Operand3}
+		IronAssembler.Data.ParsedBlock with members {Name, Instructions}
+		IronAssembler.Data.ParsedStringTable with members {Strings}
+		IronAssembler.Data.ParsedFile with members {Blocks, StringTable}
+		IronAssembler.Data.AssembledInstruction with members {Bytes, Operand1Label, Operand2Label, Operand3Label}
+		IronAssembler.Data.AssembledBlock with members {Name, Instructions, FirstInstructionAddress}
+		IronAssembler.Data.AssembledStringsTable with members {Bytes}
+		IronAssembler.Data.AssembledFile {Blocks, StringTable}
+	Processing Classes:
+		IronAssembler.IO
+		IronAssembler.Parser
+		IronAssembler.Assembler
+		IronAssembler.Linker
+
+Assembly Process [possible errors in brackets]:
+	Stage 1: Loading
+		1. Load the text of the specified file and split on newline. Discard empty lines and trim the whitespace off of every line. [file not found, file empty]
+		2. Try to create the output file. Don't hold a handle to it, just make it for now. [cannot open output file]
+	Stage 2: Parsing
+		1. Scan every line for label declarations. Note the name of every label plus the line the label is declared on.
+			a. If the file doesn't start with a label, throw an exception. [file doesn't start with label]
+			b. When a "strings:" label is found, mark its line index specifically. Multiple or zero "strings:" labels should throw an exception. [zero/multiple strings: labels]
+		2. For each declared label that isn't "strings:", create a parsed block and,
+			a. For each line of the file after the label declaration, [no instructions in block]
+				i. If the line is a label declaration, we've hit the end of the block. Add the parsed block to the parsed file structure.
+				ii. If the line is an instruction, parse it (see Instruction Parsing) and add it to the parsed block.
+		3. For the declared label that is "strings:", created a strings table and,
+			a. For each line of the file after the label declaration, [no strings in table]
+				i. If the line is a label declaration, we've hit the end of the block. Add the parsed block to the parsed file structure.
+				ii. If the line is a string table entry, parse it (see String Table Entry Parsing), and add it to the strings table.
+	Stage 3: Assembling Blocks
+		1. Given a parsed file,
+		2. For each block,
+			a. For each instruction, after converting all operands to lowercase invariant,
+				i. Create a byte stream to store the assembled result in.
+				ii. Lookup the mnemonic in a table mapping mnemonics to opcodes and add the two bytes from the table. [mnemonic not found]
+				iii. The table will also contain information on which operands of this instruction can be labels. Validate that the text of each operand is or isn't a label, as necessary. [label illegal for this instruction]
+				iv. Assemble each operand. (see Assembling Operands).
+				v. Start a flags byte using the size operand, if present. [invalid operand size]
+				vi. Complete the flags byte from the remaining one to three operands, if present.
+				vii. Add the flags byte to the assembled bytes if there are any operands. Add each assembled operand to the instruction's bytes.
+			b. Store the assembled bytes of each instruction for each block. Additionally, store the size of all assembled instructions in bytes.
+	Stage 4: Linking and Concatenation
+		1. For each assembled block, in the order they were declared in the file (excluding the strings table)
+			a. Sum up the size of the assembled block, in bytes.
+			b. Store the sums in the assembled blocks such that the first block has 0 stored in it, the second block has the size of the first block +1 stored in it, etc.
+		2. For each assembled block, in the order they were declared in the file,
+			a. For each instruction in the block,
+				i. For each operand in the block,
+					1. If the operand contained a label,
+						a. Find the starting address of the label in question. [label not found]
+						b. Find 0xCCCCCCCCCCCCCCCC, 0xDDDDDDDDDDDDDDDD, or 0xEEEEEEEEEEEEEEE in the assembled bytes. [substitution sequence not found]
+						c. Replace them with the address of the label in question.
+		3. Emit all the bytes of all assembled blocks to a flat byte stream in the order they were declared in the file.
+		4. After all the blocks are emitted, emit the string table:
+			a. Encode the string as UTF-8.
+			b. Prepend the size of the UTF-8 string, in bytes, as a UInt32.
+			c. Create a byte stream to emit the length-prefixed UTF-8 strings to, and a byte stream to emit the string addresses to.
+			d. For each length-prefixed UTF-8 string,
+				i. In the addresses stream, emit the position of the strings stream plus the address of the start of the string table in the assembled file.
+				ii. In the strings stream, emit the UTF-8 stream and note the position of the strings stream.
+			e. Emit the addresses stream first, followed by the strings stream.
+	Stage 5: Output
+		1. Open the output file as a FileStream. [various I/O errors]
+		2. Write the assembled blocks to the file.
+		3. Write the string table to the file.
+
+
+Instruction Parsing:
+	1. Given a line of text representing an instruction, split it by space, trim and convert every token to lowercase invariant.
+	2. The first token is the mnemonic. Check it in a table of mnemonics and throw if it isn't found there. [mnemonic not found]
+	3. Knowing the token lets us know if there is a size operand and how many other operands there are.
+		a. Ensure a size token is/isn't present. If it should be, it should be the second token. [size token is/isn't present]
+		b. Ensure that there are as many operands as required. Too few, or too many, throw. [too many/too few operands]
+	4. Return a parsed instruction with members {Mnemonic, Size, Operand1, Operand2, Operand3}. Anything not present in the instruction should be null.
+
+Strings Table Entry Parsing:
+	1. Given a line of text representing a string table entry, find the index of the first colon. If there isn't one, throw. [no index]
+	2. Take a substring of everything before the first colon. It should be a number, which can be parsed and stored in the parsed entry. [index not a number]
+	3. Take a substring of everything after the first colon, trimmed. It should start and end in a double-quote. [invalid string]
+	4. Remove the double quotes and store the remaining string as the actual string for the entry. Return the parsed entry.
+
+Assembling Operands:
+	1. Given a string representing an operand, and a place to store/emit bytes, [operand's type cannot be determined]
+		a. If the operand is a memory address (0x0011223344556677),
+			i. Take the substring that omits the "0x".
+			ii. Validate that it is 0x7FFFFFFFFFFFFFFF or less. [addresses is 0x8000000000000000 or more]
+			iii. For every two-character pair from the last pair to the first,
+				1. Convert it to a single byte. [memory address contains non-hex-digits]
+				2. Emit the byte.
+		b. If the operand is a memory pointer address (*0x0011223344556677),
+			i. Perform the same process as if the operand is a memory address. [addresses is 0x8000000000000000 or more, memory address contains non-hex-digits]
+			ii. Set the high bit in the last byte emitted.
+		c. If the operand is a processor register (eax),
+			i. Look up the mapping between the register and a byte. [register not found]
+			ii. Emit the mapping byte if present in the table, throw if it's not.
+		d. If the operand is a processor register containing a pointer (*eax),
+			i. Take the substring that omits the "*".
+			ii. Look up the mapping between the register and a byte. [register not found]
+			iii. Emit the mapping byte with the high bit set.
+		e. If the operand is a processor register containing a pointer with an offset (*eax+20).
+			i. Take the substring that omits the "*".
+			ii. Find the index of the "+" or "-" and take two substrings, one with the register name, and the other with the offset.
+			iii. Parse the offset into an Int32. [offset not numeric, offset out of range, offset is zero]
+			iv. Look up the mapping between the register and a byte. [register not found]
+			v. Emit the mapping byte with the highest two bits set.
+			vi. Emit the Int32 containing the offset.
+		f. If the operand is a numeric literal,
+			i. Parse the operand into a byte, ushort, uint, or ulong depending on the value of the size operand. [literal not numeric, literal out of range]
+			ii. Emit the parsed operand.
+		g. If the operand is a string table entry,
+			i. Take the substring of the operand that omits the "str:".
+			ii. Parse the number into a uint. [index not numeric, index out of range, index doesn't map to an entry]
+			iii. Emit the uint.
+		h. If the operand is a label,
+			i. Labels are linked in a later stage. For now, emit 0xCCCCCCCCCCCCCCCC, 0xDDDDDDDDDDDDDDDD, or 0xEEEEEEEEEEEEEEE if the operand is the first, second, or third, respectively.
+			ii. Ensure that the assembled instruction stores the label name(s) to link. Label names must map to the operand they were used in.
+
+An operand is a memory address if it starts with "0x".
+An operand is a memory pointer address if it starts with "*0x"
+An operand is a register if it consists only of letters.
+An operand is a pointer in a register if it starts with a "*" and the rest is only letters.
+An operand is a pointer in a register if it starts with a "*" and has a "+" or "-".
+An operand is a numeric literal if all characters are numeric.
+An operand is a string table entry if it starts with "str:".
+An operand is a label if it consists only of letters and doesn't name a register.
