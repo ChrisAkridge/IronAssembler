@@ -12,14 +12,14 @@ namespace IronAssembler.Data
 
 		public string Name { get; }
 		public IReadOnlyList<AssembledInstruction> Instructions => instructions.AsReadOnly();
-		public ulong FirstInstructionAddress { get; }
+		public ulong BlockSizeInBytes { get; }
 
 		public AssembledBlock(string name, IEnumerable<AssembledInstruction> instructions,
-			ulong firstInstructionAddress)
+			ulong blockSizeInBytes)
 		{
 			Name = name;
 			this.instructions = instructions.ToList();
-			FirstInstructionAddress = firstInstructionAddress;
+			BlockSizeInBytes = blockSizeInBytes;
 		}
 	}
 }

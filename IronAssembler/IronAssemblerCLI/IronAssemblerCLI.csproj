@@ -53,5 +53,11 @@
     <None Include="App.config" />
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\IronAssembler\IronAssembler.csproj">
+      <Project>{8b73dfe4-900d-4f8d-a210-6ad7f0b12eda}</Project>
+      <Name>IronAssembler</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

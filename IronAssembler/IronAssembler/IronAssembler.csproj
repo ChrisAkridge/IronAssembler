@@ -43,18 +43,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Assembler.cs" />
+    <Compile Include="Assembly.cs" />
+    <Compile Include="Data\AssembledBlock.cs" />
+    <Compile Include="Data\AssembledFile.cs" />
     <Compile Include="Data\AssembledInstruction.cs" />
+    <Compile Include="Data\AssembledStringsTable.cs" />
+    <Compile Include="Data\InstructionInfo.cs" />
+    <Compile Include="Data\InstructionTable.cs" />
     <Compile Include="Data\ParsedBlock.cs" />
     <Compile Include="Data\ParsedFile.cs" />
     <Compile Include="Data\ParsedInstruction.cs" />
     <Compile Include="Data\ParsedStringTable.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="Exceptions.cs" />
+    <Compile Include="Extensions.cs" />
+    <Compile Include="IO.cs" />
+    <Compile Include="LogConfigurer.cs" />
+    <Compile Include="Parser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="IronAssembler.exe.nlog">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

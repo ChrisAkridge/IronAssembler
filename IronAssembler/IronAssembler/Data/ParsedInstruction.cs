@@ -17,11 +17,11 @@ namespace IronAssembler.Data
 		public ParsedInstruction(string mnemonic, OperandSize size = OperandSize.Default,
 			string operand1Text = null, string operand2Text = null, string operand3Text = null)
 		{
-			Mnemonic = mnemonic;
+			Mnemonic = mnemonic.ToLowerInvariant();
 			Size = size;
-			Operand1Text = operand1Text;
-			Operand2Text = operand2Text;
-			Operand3Text = operand3Text;
+			Operand1Text = operand1Text?.ToLowerInvariant();
+			Operand2Text = operand2Text?.ToLowerInvariant();
+			Operand3Text = operand3Text?.ToLowerInvariant();
 		}
 	}
 }

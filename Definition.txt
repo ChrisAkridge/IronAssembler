@@ -48,7 +48,7 @@ Code Structure:
 		IronAssembler.Data.ParsedStringTable with members {Strings}
 		IronAssembler.Data.ParsedFile with members {Blocks, StringTable}
 		IronAssembler.Data.AssembledInstruction with members {Bytes, Operand1Label, Operand2Label, Operand3Label}
-		IronAssembler.Data.AssembledBlock with members {Name, Instructions, FirstInstructionAddress}
+		IronAssembler.Data.AssembledBlock with members {Name, Instructions, BlockSizeInBytes}
 		IronAssembler.Data.AssembledStringsTable with members {Bytes}
 		IronAssembler.Data.AssembledFile with members {Blocks, StringTable}
 		IronAssembler.Data.InstructionInfo with members {ProperName, Mnemonic, Opcode, NeedsSize, OperandCount, CanUseLabels}
@@ -58,6 +58,7 @@ Code Structure:
 		IronAssembler.Parser
 		IronAssembler.Assembler
 		IronAssembler.Linker
+		IronAssembler.Assembly (static class, just calls each stage)
 	Enumerations:
 		IronAssembler.Verbosity {Minimal, Stages, High, Verbose}
 		IronAssembler.OperandSize {Byte, Word, DWord, QWord}
@@ -65,7 +66,6 @@ Code Structure:
 Assembly Process [possible errors in brackets]:
 	Stage 1: Loading
 		1. Load the text of the specified file and split on newline. Discard empty lines and trim the whitespace off of every line. [file not found, file empty]
-		2. Try to create the output file. Don't hold a handle to it, just make it for now. [cannot open output file]
 	Stage 2: Parsing
 		1. Scan every line for label declarations. Note the name of every label plus the line the label is declared on.
 			a. If the file doesn't start with a label, throw an exception. [file doesn't start with label]
@@ -166,11 +166,11 @@ Assembling Operands:
 			i. Labels are linked in a later stage. For now, emit 0xCCCCCCCCCCCCCCCC, 0xDDDDDDDDDDDDDDDD, or 0xEEEEEEEEEEEEEEE if the operand is the first, second, or third, respectively.
 			ii. Ensure that the assembled instruction stores the label name(s) to link. Label names must map to the operand they were used in.
 
-An operand is a memory address if it starts with "0x".
-An operand is a memory pointer address if it starts with "*0x"
-An operand is a register if it consists only of letters.
-An operand is a pointer in a register if it starts with a "*" and the rest is only letters.
-An operand is a pointer in a register if it starts with a "*" and has a "+" or "-".
-An operand is a numeric literal if all characters are numeric.
-An operand is a string table entry if it starts with "str:".
-An operand is a label if it consists only of letters and doesn't name a register.
+An operand is a memory address if it starts with "0x".										0x[0-9A-Fa-f]{16}
+An operand is a memory pointer address if it starts with "*0x"								\*0x[0-9A-Fa-f]{16}
+An operand is a register if it consists only of letters.									eax|ebx|ecx|edx|eex|efx|egx|ehx|ebp|esp|eip|eflags|erp
+An operand is a pointer in a register if it starts with a "*" and the rest is only letters.	\*(eax|ebx|ecx|edx|eex|efx|egx|ehx|ebp|esp|eip|eflags|erp)
+An operand is a pointer in a register if it starts with a "*" and has a "+" or "-".			\*(eax|ebx|ecx|edx|eex|efx|egx|ehx|ebp|esp|eip|eflags|erp)[+|-]\d+
+An operand is a numeric literal if all characters are numeric.								\d+
+An operand is a string table entry if it starts with "str:".								(str:)\d+
+An operand is a label if it consists only of letters and doesn't name a register.			[A-Za-z_][A-Za-z0-9_]*

@@ -11,16 +11,18 @@ namespace IronAssembler.Data
 		public string ProperName { get; }
 		public string Mnemonic { get; }
 		public ushort Opcode { get; }
+		public bool NeedsFlags { get; }
 		public bool NeedsSize { get; }
 		public int OperandCount { get; }
 		public bool CanUseLabels { get; }
 
-		public InstructionInfo(string properName, string mnemonic, ushort opcode, bool needsSize,
-			int operandCount, bool canUseLabels)
+		public InstructionInfo(string properName, string mnemonic, ushort opcode, bool needsFlags,
+			bool needsSize, int operandCount, bool canUseLabels)
 		{
 			ProperName = properName;
 			Mnemonic = mnemonic;
 			Opcode = opcode;
+			NeedsFlags = needsFlags;
 			NeedsSize = needsSize;
 			OperandCount = operandCount;
 			CanUseLabels = canUseLabels;
