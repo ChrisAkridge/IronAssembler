@@ -29,6 +29,7 @@ namespace IronAssemblerCLI
 				//{
 					var inputFile = ReadInputFile(options.Value.InputFilePath);
 					var outputFile = Assembly.AssembleProgram(inputFile);
+				File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
 				//}
 				//catch (Exception ex)
 				//{

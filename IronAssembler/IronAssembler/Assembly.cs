@@ -21,23 +21,21 @@ namespace IronAssembler
 		{
 			logger.Info("Start I/O Stage");
 			var programLines = IO.SplitInputByLine(program);
+			logger.Info("End I/O Stage");
 
 			logger.Info("Start Parsing Stage");
-			int stringsLabelIndex;
-			var labelLocations = Parser.ScanProgramForLabels(programLines, out stringsLabelIndex);
-			var parsedBlocks = Parser.ParseBlocks(programLines, labelLocations);
-			var parsedStringTable = Parser.ParseStringsTable(programLines, stringsLabelIndex);
-			var parsedFile = new ParsedFile(parsedBlocks, parsedStringTable);
+			var parsedFile = Parser.ParseFile(programLines);
 			logger.Info("End Parsing Stage");
 
 			logger.Info("Start Assembling Stage");
-			var blocks = new List<AssembledBlock>();
-			foreach (var block in parsedBlocks)
-			{
-				blocks.Add(Assembler.AssembleBlock(block));
-			}
+			var assembledFile = Assembler.AssembleFile(parsedFile);
+			logger.Info("End Assembling Stage");
 
-			return null;
+			logger.Info("Start Linking Stage");
+			var linkedFile = Linker.LinkFile(assembledFile, parsedFile.StringTable);
+			logger.Info("End Linking Stage");
+
+			return linkedFile;
 		}
 	}
 }

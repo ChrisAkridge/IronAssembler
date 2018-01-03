@@ -14,7 +14,18 @@ namespace IronAssembler
 	{
 		private static Logger logger = LogManager.GetCurrentClassLogger();
 		
-		internal static Dictionary<string, int> ScanProgramForLabels(IList<string> lines, out int stringsLabelIndex)
+		internal static ParsedFile ParseFile(IList<string> programLines)
+		{
+			logger.Trace($"Parsing file of {programLines.Count} line(s)");
+			int stringsLabelLocation;
+			var labelLocations = ScanProgramForLabels(programLines, out stringsLabelLocation);
+			var blocks = ParseBlocks(programLines, labelLocations);
+			var stringsTable = ParseStringsTable(programLines, stringsLabelLocation);
+
+			return new ParsedFile(blocks, stringsTable);
+		}
+
+		private static Dictionary<string, int> ScanProgramForLabels(IList<string> lines, out int stringsLabelIndex)
 		{
 			var labelLocations = new Dictionary<string, int>();
 			int stringsLabelLineIndex = -1;
@@ -55,7 +66,7 @@ namespace IronAssembler
 			return labelLocations;
 		}
 
-		internal static IList<ParsedBlock> ParseBlocks(IList<string> lines, IDictionary<string, int> labelLocations)
+		private static IList<ParsedBlock> ParseBlocks(IList<string> lines, IDictionary<string, int> labelLocations)
 		{
 			var blocks = new List<ParsedBlock>();
 			var currentBlockInstructions = new List<ParsedInstruction>();
@@ -86,7 +97,7 @@ namespace IronAssembler
 			return blocks;
 		}
 
-		internal static ParsedStringTable ParseStringsTable(IList<string> lines, int stringsLabelIndex)
+		private static ParsedStringTable ParseStringsTable(IList<string> lines, int stringsLabelIndex)
 		{
 			logger.Trace("Parsing strings table");
 

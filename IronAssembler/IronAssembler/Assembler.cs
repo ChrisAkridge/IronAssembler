@@ -47,7 +47,19 @@ namespace IronAssembler
 		private const string LabelRegex = @"[A-Za-z_][A-Za-z0-9_]*";
 		#endregion
 
-		internal static AssembledBlock AssembleBlock(ParsedBlock block)
+		internal static AssembledFile AssembleFile(ParsedFile file)
+		{
+			var blocks = new List<AssembledBlock>(file.Blocks.Count);
+
+			foreach (var block in file.Blocks)
+			{
+				blocks.Add(AssembleBlock(block));
+			}
+
+			return new AssembledFile(blocks);
+		}
+
+		private static AssembledBlock AssembleBlock(ParsedBlock block)
 		{
 			logger.Trace($"Assembling block {block.Name}");
 			var instructions = new List<AssembledInstruction>(block.Instructions.Count);
@@ -250,7 +262,7 @@ namespace IronAssembler
 			char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
 			var parts = operand.Split(offsetSignChar);
 
-			string registerName = parts[0];
+			string registerName = parts[0].Substring(1);
 			string offsetString = parts[1];
 
 			byte register = registerName.ParseRegister();
@@ -311,13 +323,13 @@ namespace IronAssembler
 			switch (operandIndex)
 			{
 				case 0:
-					bytes.WriteLongLittleEndian(0xCCCC_CCCC_CCCC);
+					bytes.WriteLongLittleEndian(0xCCCC_CCCC_CCCC_CCCC);
 					break;
 				case 1:
-					bytes.WriteLongLittleEndian(0xDDDD_DDDD_DDDD);
+					bytes.WriteLongLittleEndian(0xDDDD_DDDD_DDDD_DDDD);
 					break;
 				case 2:
-					bytes.WriteLongLittleEndian(0xEEEE_EEEE_EEEE);
+					bytes.WriteLongLittleEndian(0xEEEE_EEEE_EEEE_EEEE);
 					break;
 				default:
 					break;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -34,6 +35,24 @@ namespace IronAssembler
 			bytes.Add((byte)((data & 0xFF000000000000) >> 48));
 			bytes.Add((byte)((data & 0xFF00000000000000) >> 56));
 		}
+		
+		public static int IndexOfSequence(this byte[] bytes, ulong sequence)
+		{
+			for (int i = 0; i <= bytes.Length - 8; i++)
+			{
+				ulong portion = bytes[i] |
+								((ulong)bytes[i + 1] << 8) |
+								((ulong)bytes[i + 2] << 16) |
+								((ulong)bytes[i + 3] << 24) |
+								((ulong)bytes[i + 4] << 32) |
+								((ulong)bytes[i + 5] << 40) |
+								((ulong)bytes[i + 6] << 48) |
+								((ulong)bytes[i + 7] << 56);
+				if (portion == sequence) { return i; }
+			}
+
+			return -1;
+		}
 
 		public static bool IsAllASCIILetters(this string s)
 		{
@@ -48,7 +67,7 @@ namespace IronAssembler
 		public static ulong ParseAddress(this string s)
 		{
 			ulong address;
-			if (!ulong.TryParse(s, out address))
+			if (!ulong.TryParse(s, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out address))
 			{
 				throw new AssemblerException($"The operand {s} is not a valid memory address.");
 			}

@@ -11,12 +11,10 @@ namespace IronAssembler.Data
 		private List<AssembledBlock> blocks;
 
 		public IReadOnlyList<AssembledBlock> Blocks => blocks.AsReadOnly();
-		public AssembledStringsTable StringsTable { get; }
 
-		public AssembledFile(IEnumerable<AssembledBlock> blocks, AssembledStringsTable stringsTable)
+		public AssembledFile(IEnumerable<AssembledBlock> blocks)
 		{
 			this.blocks = blocks.ToList();
-			StringsTable = stringsTable;
 		}
 	}
 }

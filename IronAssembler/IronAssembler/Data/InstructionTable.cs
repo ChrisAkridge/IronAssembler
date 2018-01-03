@@ -40,7 +40,7 @@ namespace IronAssembler.Data
 				{ "jlte", new InstructionInfo("Jump if Less Than or Equal To", "je", 0x0009, true, false, 1, true) },
 				{ "jgte", new InstructionInfo("Jump if Greater Than or Equal To", "je", 0x000A, true, false, 1, true) },
 				{ "jmpa", new InstructionInfo("Absolute Jump", "jmpa", 0x000B, true, false, 1, true) },
-				{ "hwcall", new InstructionInfo("Hardware Call", "hwcall", 0x000C, false, false, 1, false) },
+				{ "hwcall", new InstructionInfo("Hardware Call", "hwcall", 0x000C, true, false, 1, false) },
 				{ "stackargs", new InstructionInfo("Stack Argument Prologue", "stackargs", 0x000D, false, false, 0, false) },
 
 				// Data Operations (0x01)
