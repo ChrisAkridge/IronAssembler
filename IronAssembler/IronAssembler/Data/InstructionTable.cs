@@ -48,8 +48,8 @@ namespace IronAssembler.Data
 				{ "movln", new InstructionInfo("Move Data with Length", "movln", 0x0101, true, false, 3, false) },
 				{ "push", new InstructionInfo("Push to Stack", "push", 0x0102, true, true, 1, false) },
 				{ "pop", new InstructionInfo("Pop from Stack", "pop", 0x0103, true, true, 1, false) },
-				{ "arrayread", new InstructionInfo("Read Array Value", "arrayread", 0x0104, true, true, 2, false) },
-				{ "arraywrite", new InstructionInfo("Write Array Value", "arraywrite", 0x0105, true, true, 3, false) },
+				{ "arrayread", new InstructionInfo("Read Array Value", "arrayread", 0x0104, true, true, 1, false) },
+				{ "arraywrite", new InstructionInfo("Write Array Value", "arraywrite", 0x0105, true, true, 2, false) },
 
 				// Integral/Bitwise Operations (0x020*)
 				{ "add", new InstructionInfo("Stack Addition", "add", 0x0200, true, true, 0, false) },

@@ -218,7 +218,7 @@ namespace IronAssembler
 			}
 		}
 
-		private static void AssembleMemoryAddress(IList<byte> bytes,string operand)
+		private static void AssembleMemoryAddress(IList<byte> bytes, string operand)
 		{
 			ulong address = operand.Substring(2).ParseAddress();
 
