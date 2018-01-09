@@ -81,6 +81,12 @@ namespace IronAssembler
 			byte flagsByte = 0;
 
 			var info = InstructionTable.Lookup(instruction.Mnemonic);
+			var isUnaryLongInstruction = (info.Mnemonic == "incl") ||
+				(info.Mnemonic == "decl") ||
+				(info.Mnemonic == "bwnotl") ||
+				(info.Mnemonic == "lnotl");	// These instructions don't have a right operand but
+											// we'll still emit a 00 for the right operand in the
+											// flags byte because that's what IronArc expects
 			bytes.WriteShortLittleEndian(info.Opcode);
 
 			flagsByte |= (byte)((int)instruction.Size << 6);
@@ -94,6 +100,7 @@ namespace IronAssembler
 
 				flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 4);
 			}
+
 			if (instruction.Operand2Text != null)
 			{
 				var type = GetOperandType(instruction.Operand2Text);
@@ -102,6 +109,7 @@ namespace IronAssembler
 
 				flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 2);
 			}
+
 			if (instruction.Operand3Text != null)
 			{
 				var type = GetOperandType(instruction.Operand3Text);
@@ -110,6 +118,15 @@ namespace IronAssembler
 					2,  out operandLabels[2]);
 
 				flagsByte |= GetFlagsBitsFromOperandType(type);
+			}
+			else if (isUnaryLongInstruction)
+			{
+				// For incl, decl, bwnotl, and lnotl, there is no right operand, so the destination
+				// operand becomes the second operand. However, we still need to emit two 00 bits
+				// in the space of the second operand so that the destination type bits are always
+				// in the lowest-order bits.
+
+				flagsByte = (byte)((flagsByte & 0xF0) | ((flagsByte & 0x0F) >> 2));
 			}
 
 			if (info.NeedsFlags)
