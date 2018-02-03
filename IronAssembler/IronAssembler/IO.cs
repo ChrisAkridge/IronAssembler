@@ -21,9 +21,7 @@ namespace IronAssembler
 			}
 
 			// https://stackoverflow.com/a/25196003/2709212
-			return input.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries)
-				.Select(s => s.Trim())
-				.ToList();
+			return input.GetLines(removeEmptyLines: true).ToList();
 		}
 	}
 }

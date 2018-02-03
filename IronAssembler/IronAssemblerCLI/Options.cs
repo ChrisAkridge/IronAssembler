@@ -28,22 +28,7 @@ namespace IronAssemblerCLI
 		[Option('v', "verbose", SetName = "verbosity", Required = false, HelpText = "Verbose. Prints all messages.")]
 		public bool VerboseVerbosity { get; set; }
 
-		
-
-		//[Help]
-		//public string GetUsage()
-		//{
-		//	var help = new HelpText
-		//	{
-		//		Heading = new HeadingInfo("IronAssemblerCLI", "Version 0.1"),
-		//		Copyright = new CopyrightInfo("Chris Akridge", 2017),
-		//		AdditionalNewLineAfterOption = true,
-		//		AddDashesToOption = true
-		//	};
-		//	help.AddPreOptionsLine("Licensed under the MIT license.");
-		//	help.AddPreOptionsLine("Usage: IronAssemblerCLI \"path\\to\\input\" \"path\\to\\output\" -[m|s|h|v]");
-		//	help.AddOptions(this);
-		//	return help;
-		//}
+		// Add option 't' - given an IronArc Direct Assembly file, skips the translation phase
+		// Add option 'd' - produces an IronArc Direct Assembly file instead of an IronArc executable (extension is always iexe)
 	}
 }

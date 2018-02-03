@@ -19,9 +19,9 @@ namespace IronAssembler.Data
 		{
 			Mnemonic = mnemonic.ToLowerInvariant();
 			Size = size;
-			Operand1Text = operand1Text?.ToLowerInvariant();
-			Operand2Text = operand2Text?.ToLowerInvariant();
-			Operand3Text = operand3Text?.ToLowerInvariant();
+			Operand1Text = operand1Text;
+			Operand2Text = operand2Text;
+			Operand3Text = operand3Text;
 		}
 	}
 }

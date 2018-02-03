@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -84,6 +85,20 @@ namespace IronAssembler
 			}
 
 			return (byte)register;
+		}
+
+		// https://stackoverflow.com/a/41176852/2709212
+		public static IEnumerable<string> GetLines(this string str, bool removeEmptyLines = false)
+		{
+			using (var sr = new StringReader(str))
+			{
+				string line;
+				while ((line = sr.ReadLine()) != null)
+				{
+					if (removeEmptyLines && string.IsNullOrWhiteSpace(line)) { continue; }
+					yield return line.Trim();
+				}
+			}
 		}
 	}
 }

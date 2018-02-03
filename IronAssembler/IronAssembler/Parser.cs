@@ -135,10 +135,10 @@ namespace IronAssembler
 		private static ParsedInstruction ParseInstruction(string instructionLine)
 		{
 			var parts = instructionLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-				.Select(s => s.Trim().ToLowerInvariant()).ToArray();
+				.Select(s => s.Trim()).ToArray();
 
 			InstructionInfo info;
-			if (!InstructionTable.TryLookup(parts[0], out info))
+			if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out info))
 			{
 				throw new ParsingException($"There is no instruction with the mnemonic {parts[0]}.");
 			}
@@ -150,7 +150,7 @@ namespace IronAssembler
 				{
 					throw new ParsingException($"The {info.Mnemonic} instruction requires a size operand.");
 				}
-				var presumablySizeOperand = parts[1];
+				var presumablySizeOperand = parts[1].ToLowerInvariant();
 				if (!IsValidSize(presumablySizeOperand))
 				{
 					throw new ParsingException($"The size {presumablySizeOperand} is invalid.");

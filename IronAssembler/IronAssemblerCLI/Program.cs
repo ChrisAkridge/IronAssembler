@@ -25,35 +25,25 @@ namespace IronAssemblerCLI
 					options.Value.MinimalVerbosity = true;
 				}
 
-				//try
-				//{
-					var inputFile = ReadInputFile(options.Value.InputFilePath);
-					var outputFile = Assembly.AssembleProgram(inputFile);
+				var inputFile = ReadInputFile(options.Value.InputFilePath);
+
+				// If producing an IEXE, do the below line
+				var outputFile = Assembly.AssembleProgram(inputFile /*, isDirectAssemblyFile: {true|false}*/);
+
+				// If options says make an IronArc Direct Assembly,
+				//	Switch extension on output file to IASM regardless of what it is
+				//	Do the translation stage only
+				//	Write to file below
+
 				File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
-				//}
-				//catch (Exception ex)
-				//{
-				//	Console.WriteLine();
-				//	Console.WriteLine("IronAssembler has encountered an error and cannot complete the assembly.");
-				//	Console.WriteLine($"The type of the error is {ex.GetType().Name}.");
-				//	Console.WriteLine($"The message of the error is:");
-				//	Console.WriteLine(ex.Message);
-				//	Console.WriteLine();
-				//	Console.WriteLine("Press S to print a stack trace.");
-				//	if (Console.ReadKey(intercept: true).Key == ConsoleKey.S)
-				//	{
-				//		Console.Write(ex.StackTrace);
-				//	}
-				//	else { return; }
-				//}
+				// Create code that is included only in debug builds that prints any exceptions
+				// and gracefully exits
 			}
-
-			Console.ReadKey(intercept: true);
+			else
+			{
+				Console.WriteLine("The arguments you provided could not be parsed.");
+			}
 		}
-
-		// WYLO: assemble the string table
-		// Also make every method except AssembleParsedFile in Assembler as a private method
-		// Maybe do the same with Parser and just add a ParseFile(IEnumerable<string>)
 
 		static string ReadInputFile(string inputFilePath)
 		{
