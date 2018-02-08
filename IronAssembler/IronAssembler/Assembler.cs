@@ -84,7 +84,7 @@ namespace IronAssembler
 			var isUnaryLongInstruction = (info.Mnemonic == "incl") ||
 				(info.Mnemonic == "decl") ||
 				(info.Mnemonic == "bwnotl") ||
-				(info.Mnemonic == "lnotl");	// These instructions don't have a right operand but
+				(info.Mnemonic == "lnotl"); // These instructions don't have a right operand but
 											// we'll still emit a 00 for the right operand in the
 											// flags byte because that's what IronArc expects
 			bytes.WriteShortLittleEndian(info.Opcode);

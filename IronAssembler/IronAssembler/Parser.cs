@@ -158,6 +158,10 @@ namespace IronAssembler
 				size = (OperandSize)Enum.Parse(typeof(OperandSize), presumablySizeOperand, ignoreCase: true);
 			}
 
+			// movln doesn't take a size operand but has an implied size of QWORD
+			// as both the source and destination operand (if well-formed) are pointers
+			if (info.Mnemonic == "movln") { size = OperandSize.QWord; }
+
 			int requiredPartCount = 1 + ((info.NeedsSize) ? 1 : 0) + info.OperandCount;
 			if (parts.Length != requiredPartCount)
 			{
