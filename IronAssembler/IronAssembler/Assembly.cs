@@ -17,15 +17,19 @@ namespace IronAssembler
 			LogConfigurer.ConfigureLog();
 		}
 
-		public static byte[] AssembleProgram(string program /*, bool isDirectAssemblyFile */)
+		public static byte[] AssembleProgram(string program, bool isDirectAssemblyFile)
 		{
-			// If the file is a direct assembly file, skip the translation stage
-
 			logger.Info("Start I/O Stage");
-			var programLines = IO.SplitInputByLine(program);
+			IList<string> programLines = new List<string>();
+			if (!isDirectAssemblyFile)
+			{
+				programLines = Translator.TranslateFile(program);
+			}
+			else
+			{
+				programLines = IO.SplitInputByLine(program);
+			}
 			logger.Info("End I/O Stage");
-
-			// Log and perform the translation phase
 
 			logger.Info("Start Parsing Stage");
 			var parsedFile = Parser.ParseFile(programLines);

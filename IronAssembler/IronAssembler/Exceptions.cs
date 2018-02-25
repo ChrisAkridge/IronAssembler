@@ -7,6 +7,17 @@ using System.Threading.Tasks;
 namespace IronAssembler
 {
 	[Serializable]
+	public class TranslationException : Exception
+	{
+		public TranslationException() { }
+		public TranslationException(string message) : base(message) { }
+		public TranslationException(string message, Exception inner) : base(message, inner) { }
+		protected TranslationException(
+		  System.Runtime.Serialization.SerializationInfo info,
+		  System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+	}
+
+	[Serializable]
 	public class ParsingException : Exception
 	{
 		public ParsingException() { }

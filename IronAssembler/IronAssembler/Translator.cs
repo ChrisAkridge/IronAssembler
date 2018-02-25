@@ -1,141 +1,311 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using IronAssembler.Data;
+using NLog;
 
 namespace IronAssembler
 {
 	public static class Translator
 	{
+		private static Logger logger = LogManager.GetCurrentClassLogger();
+
+		#region Regexes
+		// Matches a register containing a pointer with an offset (*eax+0x2DE, *ecx-0x3FD)
+		// Match an *, an e, one or more letters, a single + or -, an 0x, then one or more hex digits
+		private const string RegisterWithHexadecimalOffsetRegex = @"\*e[a-z]+(\+|-)0x[0-9A-Fa-f]+";
+
+		// Matches a memory address (mem:0x2030, mem:0xFDE2)
+		// Matches (case-insensitively) mem:0x, then one or more hex digits
+		private const string MemoryAddressRegex = @"(?i)mem:0x[0-9A-Z]+";
+
+		// Matches a hexadecimal number (0x20495, 0x1040A)
+		// Matches (case-insensitively) 0x, then one or more hex digits
+		private const string HexadecimalNumberRegex = @"(?i)0x[0-9A-Z]+";
+
+		// Matches a floating point number (single(346), double(3.1415962))
+		// Matches (case-insensitively), single or double, then (, then either a digit, period, and
+		//	one or more digits, OR matches one or more digits, then a )
+		private const string FloatingPointNumberRegex = @"(?i)(single|double)\(([0-9]\.[0-9]+|[0-9]+)\)";
+		#endregion
+
+		public static IList<string> TranslateFile(string inputFile) => TranslateFile(IO.SplitInputByLine(inputFile));
+
 		public static IList<string> TranslateFile(IList<string> inputFileLines)
 		{
-			//  Remove comments
-			//	For each line,
-			//	|	Split the line by whitespace into words
-			//	|	If there are more than two words,
-			//	|	|	For each word (operand) of index 2 or higher,
-			//	|	|	|	Check if the operand needs to be translated
-			//	|	|	|	Translate the operand if it does
-			//	|	|	|	Add the word to a StringBuilder for the line
-			//	|	Add the line to a list of lines
-			//	Perform the floating point translation
-			//	Perform the string table translation
+			logger.Trace($"Translating file of {inputFileLines.Count} lines");
 
-			return inputFileLines;
+			inputFileLines = RemoveComments(inputFileLines);
+			List<string> translatedLines = new List<string>(inputFileLines.Count);
+
+			foreach (string line in inputFileLines)
+			{
+				string[] tokens = line.SplitInstructionLine();
+
+				if (tokens[0].IsLabelLine())
+				{
+					// this is a label, skip
+					translatedLines.Add(line);
+					continue;
+				}
+
+				var lineBuilder = new StringBuilder();
+				int i = tokens.Length - 1;
+				while (!tokens[i].IsSizeOperand() && !InstructionTable.TryLookup(tokens[i], out _))
+				{
+					string translatedOperand = TranslateOperand(tokens[i]);
+					lineBuilder.Insert(0, " " + translatedOperand);
+
+					i--;
+				}
+
+				while (i >= 0) { lineBuilder.Insert(0, " " + tokens[i]); i--; }
+				translatedLines.Add(lineBuilder.ToString().TrimStart());
+			}
+
+			translatedLines = (List<string>)TranslateFloatingPointLiterals(translatedLines);
+			translatedLines = (List<string>)BuildStringTableFromProgram(translatedLines);
+
+			return translatedLines;
 		}
 
 		private static IList<string> RemoveComments(IList<string> lines)
 		{
-			// For each line,
-			//	If line starts with a "#", ignore it
-			//	If line contains a "#", cut it and everything after, trim, and add to result list
-			return null;
+			var linesWithoutComments = new List<string>();
+
+			foreach (string line in lines)
+			{
+				if (line.StartsWith("#")) { continue; }
+				else if (line.Contains("#"))
+				{
+					int sharpIndex = line.IndexOf('#');
+					string lineWithoutComment = line.Substring(0, sharpIndex).Trim();
+					linesWithoutComments.Add(lineWithoutComment);
+				}
+				else { linesWithoutComments.Add(line); }
+			}
+
+			return linesWithoutComments;
 		}
 
 		private static string TranslateOperand(string operand)
 		{
-			// For all below operands,
-			// |	Check if the operand is of that type
-			// |	|	True: Translate the operand and return it
-			// |	|	False: Return the operand as-is
-			return null;
+			if (IsRegisterWithHexadecimalOffset(operand))
+			{
+				operand = TranslateRegisterWithHexadecimalOffset(operand);
+			}
+			else if (IsMemoryAddress(operand))
+			{
+				operand = TranslateMemoryAddress(operand);
+			}
+			else if (IsHexadecimalNumericLiteral(operand))
+			{
+				operand = TranslateHexadecimalNumericLiteral(operand);
+			}
+			return operand;
 		}
-		
-		private static bool IsRegisterWithHexadecimalOffset(string operand)
-		{
-			// Operand must start with * and be followed by a register name (case insensitive)
-			// Then a + or -
-			// Then "0x" (case insensitive)
-			// Then 1 to 8 hex digits (case insensitive)
-			return false;
-		}
+
+		private static bool IsRegisterWithHexadecimalOffset(string operand) =>
+			operand.EntireStringMatchesRegex(RegisterWithHexadecimalOffsetRegex);
 
 		private static string TranslateRegisterWithHexadecimalOffset(string operand)
 		{
-			// Find a + or - and split on it
-			// Convert the second value (the offset) to decimal
-			// Concatenate the register name and the decimal offset
-			return null;
+			char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
+			string[] operandParts = operand.Split(offsetSignChar);
+
+			long offset = (long)operandParts[1].Substring(2).ParseAddress();
+			if (offsetSignChar == '-') { offset = -offset; }
+			if (offset < int.MinValue || offset > int.MaxValue)
+			{
+				throw new TranslationException($"A register offset must be in the range of +/-2.1 billion. The offset received was {offset}.");
+			}
+
+			return operandParts[0] + ((offsetSignChar == '+') ? "+" : "") + offset.ToString();
 		}
 
-		private static bool IsMemoryAddress(string operand)
-		{
-			// Operand must start with "mem:" (case insensitive)
-			// Then "0x" (case insensitive)
-			// Then 1 to 16 hex digits (case insensitive)
-			return false;
-		}
+		private static bool IsMemoryAddress(string operand) =>
+			operand.EntireStringMatchesRegex(MemoryAddressRegex);
 
 		private static string TranslateMemoryAddress(string operand)
 		{
-			// Lowercase the operand and split on 'x'
-			// Take everything in the second value (the address) and left-pad it up to 16 characters with '0'
-			// Concatenate "0x" and the left-pad value
-			return null;
+			operand = operand.ToLowerInvariant();
+			string[] operandParts = operand.Split('x');
+
+			string addressPart = operandParts[1].PadLeft(16, '0');
+			return "0x" + addressPart;
 		}
-		
-		private static bool IsHexadecimalNumericLiteral(string operand)
-		{
-			// Operand must start with "0x" (case insensitive)
-			// Then 1 to 16 hex digits (case insensitive)
-			return false;
-		}
+
+		private static bool IsHexadecimalNumericLiteral(string operand) =>
+			operand.EntireStringMatchesRegex(HexadecimalNumberRegex);
 
 		private static string TranslateHexadecimalNumericLiteral(string operand)
 		{
-			// Convert operand to decimal
-			return null;
+			string numberString = operand.Substring(2);
+			ulong number = 0;
+
+			if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out number))
+			{
+				throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
+			}
+
+			return number.ToString();
 		}
 
 		private static bool IsFloatingPointLiteral(string operand)
-		{
-			// Operand must start with "single(" or "double("  (case insensitive)
-			// Then a floating point number
-			// Then a ')'
-			return false;
-		}
+			=> operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
 
 		private static IList<string> TranslateFloatingPointLiterals(IList<string> lines)
 		{
-			// Since we need to add size operands here, we can't just do this as we can all the
-			// above translations.
+			List<string> translatedLines = new List<string>(lines.Count);
 
-			// For each line,
-			// |	Split the line into words by whitespace
-			// |	Check if the second word is a size token and store it in a local if it is
-			// |	For each word from index ((size token local not null) ? 2 : 1),
-			// |	|	If the word is a floating point literal,
-			// |	|	|	Split it on '(' and take the second value without the last character
-			// |	|	|	Use float.Parse or double.Parse to get the literal's value
-			// |	|	|	Use BitConverter or an extension method to get the uint/ulong of the value's bits
-			// |	|	|	Set that word in the words array to the uint/ulong's ToString
-			// |	|	|	If the size token local is not null,
-			// |	|	|	|	Check that the size token is DWORD if the literal is float, or QWORD if it's double. Throw if not.
-			// |	|	|	Else, if the size token present flag is not set,
-			// |	|	|	|	Set the size token local to DWORD/QWORD for float/double, respectively
-			// |	Create a new line from these words: [0], size token local, remainder of words
-			// |	Add line to result
-			return null;
+			foreach (string line in lines)
+			{
+				if (line.IsLabelLine() || line.ContainsStringLiteral() || line.IsOperandlessInstruction())
+				{ translatedLines.Add(line); continue; }
+
+				string[] tokens = line.SplitInstructionLine();
+
+				bool sizeTokenOriginallyPresent = false;
+				string sizeToken = null;
+				if (tokens[1].IsSizeOperand())
+				{
+					sizeToken = tokens[1].ToLowerInvariant();
+					sizeTokenOriginallyPresent = true;
+				}
+
+				for (int i = (sizeToken != null) ? 2 : 1; i < tokens.Length; i++)
+				{
+					if (IsFloatingPointLiteral(tokens[i]))
+					{
+						string[] operandParts = tokens[i].ToLowerInvariant().Split('(');
+						string literalText = operandParts[1].Substring(0, operandParts[1].Length - 1);
+						
+						if (operandParts[0] == "single")
+						{
+							tokens[i] = FloatToUIntBitwiseString(literalText);
+						}
+						else if (operandParts[0] == "double")
+						{
+
+							tokens[i] = DoubleToULongBitwiseString(literalText);
+						}
+
+						if (sizeToken != null)
+						{
+							if (operandParts[0] == "single" && sizeToken != "dword") { throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD."); }
+							else if (operandParts[0] == "double" && sizeToken != "qword") { throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD."); }
+						}
+						else
+						{
+							sizeToken = (operandParts[0] == "single") ? "DWORD" : "QWORD";
+						}
+					}
+				}
+
+				string resultLine = tokens[0] + " ";
+				resultLine += sizeToken?.ToUpperInvariant() + " ";
+				resultLine += string.Join(" ", (sizeTokenOriginallyPresent) ? tokens.Skip(2) : tokens.Skip(1));
+				translatedLines.Add(resultLine);
+			}
+			return translatedLines;
 		}
 
-		private static IList<string> BuildStringTableFromLiterals(IList<string> lines)
+		private static string FloatToUIntBitwiseString(string floatLiteral)
 		{
-			// For each line,
-			// |	Find any \" sequence and add the index of that " to an ignored indices list.
-			// |	Find all other " characters at non-ignored indices and add them to a list.
-			// |	Take each pair of quote indices to make a string and add it to a list if not duplicate.
-			// |	Replace the literal in the line with a table index operand using an
-			//		 auto-incremented string index (be sure to replace the string in the lines
-			//		  argument). Add the line's index to a list of lines to check for size tokens.
-			// |	Check if any of the lines with string operands need to add a size token, and
-			//		 add one if necessary (be sure to replace the string in the lines argument).
-			// |	Make a strings table from the list of strings.
+			float literal = 0f;
+			if (!float.TryParse(floatLiteral, out literal))
+			{
+				throw new TranslationException($"The floating point literal {floatLiteral} is not valid.");
+			}
 
-			// Locals: ignored indices list, non-ignored double quote indices list, list of
-			// non-duplicate string literals, index of last recorded string literal, list of lines
-			// to check for missing size tokens, strings table.
-			return null;
+			uint literalBits = (uint)(BitConverter.ToInt32(BitConverter.GetBytes(literal), 0));
+			return literalBits.ToString();
+		}
+
+		private static string DoubleToULongBitwiseString(string doubleLiteral)
+		{
+			double literal = 0d;
+			if (!double.TryParse(doubleLiteral, out literal))
+			{
+				throw new TranslationException($"The floating point literal {doubleLiteral} is not valid.");
+			}
+
+			ulong literalBits = (ulong)BitConverter.DoubleToInt64Bits(literal);
+			return literalBits.ToString();
+		}
+
+		private static IList<string> BuildStringTableFromProgram(IList<string> lines)
+		{
+			List<string> stringsTable = new List<string>();
+			List<int> linesWithLiterals = new List<int>();
+
+			for (int i = 0; i < lines.Count; i++)
+			{
+				string line = lines[i];
+
+				List<int> ignoredQuoteIndices = new List<int>();
+				List<int> quoteIndices = new List<int>();
+
+				for (int j = 0; j < line.Length; j++)
+				{
+					if (line[j] == '\"')
+					{
+						if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
+						else if (line[j - 1] == '\\') { ignoredQuoteIndices.Add(j); }
+						else { quoteIndices.Add(j); }
+					}
+				}
+
+				if (!quoteIndices.Any()) { continue; } else { linesWithLiterals.Add(i); }
+				if (quoteIndices.Count % 2 != 0) { throw new TranslationException($"Some string literals are not properly terminated.\r\n\t{line}"); }
+
+				for (int quoteIndex = 0; quoteIndex < quoteIndices.Count; quoteIndex += 2)
+				{
+					int firstQuoteIndex = quoteIndices[quoteIndex];
+					int secondQuoteIndex = quoteIndices[quoteIndex + 1];
+					int literalLength = secondQuoteIndex - firstQuoteIndex;
+
+					string literal = line.Substring(firstQuoteIndex, literalLength + 1);
+					if (!stringsTable.Contains(literal))
+					{
+						stringsTable.Add(literal);
+					}
+				}
+			}
+
+			foreach (var lineIndex in linesWithLiterals)
+			{
+				for (int i = 0; i < stringsTable.Count; i++)
+				{
+					lines[lineIndex] = lines[lineIndex].Replace(stringsTable[i], "str:" + i.ToString());
+				}
+
+				string[] tokens = lines[lineIndex].SplitInstructionLine();
+				if (tokens[1].ToLowerInvariant() != "qword" && tokens[0] != "hwcall")
+				{
+					lines[lineIndex] = tokens[0] + " "
+						+ "QWORD " + string.Join(" ", tokens.Skip(1));
+				}
+			}
+
+
+			return lines.Concat(BuildStringsTable(stringsTable)).ToList();
+		}
+
+		private static IList<string> BuildStringsTable(IList<string> stringsTable)
+		{
+			List<string> stringsTableLines = new List<string>();
+			stringsTableLines.Add("strings:");
+
+			for (int i = 0; i < stringsTable.Count; i++)
+			{
+				stringsTableLines.Add(i.ToString() + ": " + stringsTable[i]);
+			}
+
+			return stringsTableLines;
 		}
 	}
 }

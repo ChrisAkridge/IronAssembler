@@ -93,7 +93,7 @@ A string literal is a string surrounded by double quotes (`"Hello, world!"`). St
 * Short Unicode code point (`U+0000 to U+FFFF`), written `\uXXXX` where `XXXX` is four hex digits
 * Long Unicode code point (`U+000000 to U+10FFFF`), written `\uXXXXXXXX` where `XXXXXXXX` is eight hex digits.
 
-Some instructions (notably jumps and calls) can accept label names in the place of memory addresses. During assembly, the label names must be substituted for the address of the first instruction in the block named by that label.
+Any instruction in which memory addresses are legal can accept label names in the place of those memory addresses. During assembly, the label names must be substituted for the address of the first instruction in the block named by that label.
 
 Operands appear after the size token (if present) and the mnemonic. All hexadecimal sequences are case-insensitive but should be all uppercase.
 

@@ -55,6 +55,24 @@ namespace IronAssembler
 			return -1;
 		}
 
+		public static string[] SplitInstructionLine(this string instructionLine) =>
+			instructionLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+
+		public static bool IsSizeOperand(this string s)
+		{
+			s = s.ToLowerInvariant();
+			return (s == "byte") || (s == "word") || (s == "dword") || (s == "qword");
+		}
+
+		public static bool IsOperandlessInstruction(this string instructionLine)
+		{
+			string[] tokens = SplitInstructionLine(instructionLine);
+			return tokens.Length == 1 || (tokens.Length == 2 && tokens[1].IsSizeOperand());
+		}
+
+		public static bool IsLabelLine(this string line) => line.EndsWith(":");
+		public static bool ContainsStringLiteral(this string line) => line.Contains("\"");
+
 		public static bool IsAllASCIILetters(this string s)
 		{
 			return s.All(c => (c >= 65 && c <= 90) || (c >= 97 && c <= 122));

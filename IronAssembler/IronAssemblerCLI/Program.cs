@@ -17,25 +17,24 @@ namespace IronAssemblerCLI
 
 			if (result is Parsed<Options> options)
 			{
-				if ((!options.Value.MinimalVerbosity) &&
-					(!options.Value.StagesVerbosity) &&
-					(!options.Value.HighVerbosity) &&
-					(!options.Value.VerboseVerbosity))
-				{
-					options.Value.MinimalVerbosity = true;
-				}
-
 				var inputFile = ReadInputFile(options.Value.InputFilePath);
 
-				// If producing an IEXE, do the below line
-				var outputFile = Assembly.AssembleProgram(inputFile /*, isDirectAssemblyFile: {true|false}*/);
+				if (!options.Value.ProduceDirectAssembly)
+				{
+					byte[] outputFile = Assembly.AssembleProgram(inputFile, isDirectAssemblyFile: options.Value.SkipTranslationPhase);
+					File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
+				}
+				else
+				{
+					string outputPath = options.Value.OutputFilePath;
+					int extensionDotIndex = outputPath.LastIndexOf('.');
+					var outputPathWithoutExtension = outputPath.Substring(0, extensionDotIndex);
+					options.Value.OutputFilePath = outputPathWithoutExtension + ".iasm";
 
-				// If options says make an IronArc Direct Assembly,
-				//	Switch extension on output file to IASM regardless of what it is
-				//	Do the translation stage only
-				//	Write to file below
+					IList<string> directAssembly = Translator.TranslateFile(inputFile);
+					File.WriteAllLines(options.Value.OutputFilePath, directAssembly);
+				}
 
-				File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
 				// Create code that is included only in debug builds that prints any exceptions
 				// and gracefully exits
 			}
