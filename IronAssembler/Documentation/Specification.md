@@ -192,14 +192,24 @@ Following the count and addresses are each string in the table, in the order the
 All numeric values in the string table (string count, addresses, byte counts) must be in reverse order if a little-endian file is being produced.
 
 ## Disassembler
-Assemblers can implement disassemblers. Disassemblers must take input as a file or as a stream of bytes. The disassembler cannot assume that any sequence of input bytes always starts with a header.
+IronAssembler will support the ability to disassemble IronArc executable files back into IronArc Direct Assembly. The disassembler will support disassembling entire programs or blocks of bytes.
 
-To disassemble a header, merely read the values of the fields.
+The core of the disassembler is the ability to disassemble individual instructions. The disassembler starts by reading the two-byte opcode and looking up information about the operands that follow, if any. Next, the flags byte is read (if present) and used to determine the size of the data and the types of the operands that follow.
 
-To disassemble an individual instruction, read and lookup the opcode to determine the format of the flags byte and the operand count. Use the operand types in the flags byte to disassemble the operands that follow.
+Each individual operand type can be disassembled with relative ease by merely inspecting the bytes that compose them. Registers can be disassembled by inspecting their highest bits to see if the operand is used as a pointer and if it has an offset. Memory addresses can be read verbatim as well as string table entries and numeric literals.
 
-After all instructions are disassembled, any jumps or calls with explicit memory addresses should have their addresses noted. These addresses are, most often, addresses of the first instructions in blocks. From this, automatically generated labels (such as `block_0`) can be inserted between instructions to somewhat ease the process of following control flow.
+Disassembly of an entire *.iexe file is also rather straightforward. The header, being at the start of the file, is both easy and useful, as it stores the address of the strings table. This allows the strings table to be properly disassembled.
 
-For streams of bytes, however, this address noting process should not occur as the addresses are not addresses within the stream, but within whatever file the stream is being made from. Additionally, some addresses may lie outside the stream of bytes.
+Entire *.iexe file disassembly is intended to produce a text file that can then be fed back into IronAssembler to produce the same iexe file.
 
-WYLO: disassemble string table
+Another key usage of disassemblers is in debuggers. Typically, a debugger gives a view into only a portion of the program's code at a time, typically in a window the user can scroll in or set to a different location of the program.
+
+Thus, IronAssembler's disassembler, in addition to the ability to disassemble entire *.iexe files, will support the concept of disassembly windows. A disassembly window is composed of an address into a block of bytes (typically memory) and a number of instructions to disassemble from that address. Each disassembled instruction is additionally marked with its address in memory. This allows the window to scroll cleanly through memory.
+
+Every block of bytes is expected to have bytes that are not IronArc instructions. Each pair of such invalid bytes in a disassembly window will be displayed as `?? ??`.
+
+One difficulty in disassembling IronArc programs is the direction of the disassembly. Forward disassembly is easy, but backwards disassembly is very difficult as each instruction is anywhere from 2 to 27 bytes long and it's impossible to know where each operand begins. Thus, the disassembly window will maintain a list of "known good addresses" which map to the start of an instruction. Programs using IronAssembler can add their own "known good addresses" as well.
+
+If the user scrolls up, thereby requesting to disassemble instructions before the currently displayed instructions, the disassembler will see if there are any known good addresses before the current address. If there are, it will disassemble
+
+WYLO: supports caching, but that can be turned off
