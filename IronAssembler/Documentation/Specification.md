@@ -210,6 +210,6 @@ Every block of bytes is expected to have bytes that are not IronArc instructions
 
 One difficulty in disassembling IronArc programs is the direction of the disassembly. Forward disassembly is easy, but backwards disassembly is very difficult as each instruction is anywhere from 2 to 27 bytes long and it's impossible to know where each operand begins. Thus, the disassembly window will maintain a list of "known good addresses" which map to the start of an instruction. Programs using IronAssembler can add their own "known good addresses" as well.
 
-If the user scrolls up, thereby requesting to disassemble instructions before the currently displayed instructions, the disassembler will see if there are any known good addresses before the current address. If there are, it will disassemble
+If the user scrolls up, thereby requesting to disassemble instructions before the currently displayed instructions, the disassembler will see if there are any known good addresses before the current address. If there are, it will disassemble from the last known good address up to the requested address.
 
-WYLO: supports caching, but that can be turned off
+In order to save time from disassembling the same instructions again and again, disassembly windows support caching of instructions at each address. This means that instructions already disassembled will merely be displayed again when seeked to, instead of disassembling them again. This feature can be disabled if the program is known to change (i.e. self-modifying programs or programs being loaded into and out of memory). Disabling disassembly caching will clear the cache.

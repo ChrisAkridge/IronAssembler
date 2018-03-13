@@ -8,6 +8,9 @@ using NLog;
 
 namespace IronAssembler
 {
+	/// <summary>
+	/// Converts parsed elements of an assembly file into assembled elements of bytes.
+	/// </summary>
 	internal static class Assembler
 	{
 		private const int MaximumInstructionLength = 27;
@@ -47,6 +50,11 @@ namespace IronAssembler
 		private const string LabelRegex = @"[A-Za-z_][A-Za-z0-9_]*";
 		#endregion
 
+		/// <summary>
+		/// Assembles a parsed file.
+		/// </summary>
+		/// <param name="file">The parsed file to assemble.</param>
+		/// <returns>An assembled file containing each block and the string table assembled into bytes.</returns>
 		internal static AssembledFile AssembleFile(ParsedFile file)
 		{
 			var blocks = new List<AssembledBlock>(file.Blocks.Count);

@@ -17,31 +17,46 @@ namespace IronAssemblerCLI
 
 			if (result is Parsed<Options> options)
 			{
-				var inputFile = ReadInputFile(options.Value.InputFilePath);
-
-				if (!options.Value.ProduceDirectAssembly)
+				if (!options.Value.DisassembleFile)
 				{
-					byte[] outputFile = Assembly.AssembleProgram(inputFile, isDirectAssemblyFile: options.Value.SkipTranslationPhase);
-					File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
+					var inputFile = ReadInputFile(options.Value.InputFilePath);
+
+					if (!options.Value.ProduceDirectAssembly)
+					{
+						byte[] outputFile = Assembly.AssembleProgram(inputFile, isDirectAssemblyFile: options.Value.SkipTranslationPhase);
+						File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
+					}
+					else
+					{
+						string outputPath = options.Value.OutputFilePath;
+						int extensionDotIndex = outputPath.LastIndexOf('.');
+						var outputPathWithoutExtension = outputPath.Substring(0, extensionDotIndex);
+						options.Value.OutputFilePath = outputPathWithoutExtension + ".iasm";
+
+						IList<string> directAssembly = Translator.TranslateFile(inputFile);
+						File.WriteAllLines(options.Value.OutputFilePath, directAssembly);
+					}
+
+					// Create code that is included only in debug builds that prints any exceptions
+					// and gracefully exits
 				}
 				else
 				{
-					string outputPath = options.Value.OutputFilePath;
-					int extensionDotIndex = outputPath.LastIndexOf('.');
-					var outputPathWithoutExtension = outputPath.Substring(0, extensionDotIndex);
-					options.Value.OutputFilePath = outputPathWithoutExtension + ".iasm";
+					var inputFile = File.ReadAllBytes(options.Value.InputFilePath);
+					Console.WriteLine($"Loaded file, length {inputFile.Length} byte(s).");
 
-					IList<string> directAssembly = Translator.TranslateFile(inputFile);
-					File.WriteAllLines(options.Value.OutputFilePath, directAssembly);
+					string disassembled = Disassembler.DisassembleProgram(inputFile, true, true);
+					Console.WriteLine($"Disassembly complete.");
+
+					File.WriteAllText(options.Value.OutputFilePath, disassembled);
 				}
-
-				// Create code that is included only in debug builds that prints any exceptions
-				// and gracefully exits
 			}
 			else
 			{
 				Console.WriteLine("The arguments you provided could not be parsed.");
 			}
+
+			Console.ReadKey();
 		}
 
 		static string ReadInputFile(string inputFilePath)

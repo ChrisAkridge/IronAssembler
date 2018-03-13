@@ -21,5 +21,8 @@ namespace IronAssemblerCLI
 
 		[Option('d', "producedirect", HelpText = "-d or --producedirect: Given an IronArc assembly file, produces an IronArc Direct Assembly file. The output file always has extension iasm regardless of the given output path.", Required = false)]
 		public bool ProduceDirectAssembly { get; set; }
+
+		[Option('s', "disassemble", HelpText = "-s or --disassemble: Given an IronArc executable file, disassembles into an IronArc Direct Assembly file.")]
+		public bool DisassembleFile { get; set; }
 	}
 }

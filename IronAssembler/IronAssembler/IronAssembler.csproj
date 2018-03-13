@@ -60,6 +60,7 @@
     <Compile Include="Data\ParsedFile.cs" />
     <Compile Include="Data\ParsedInstruction.cs" />
     <Compile Include="Data\ParsedStringTable.cs" />
+    <Compile Include="Disassembler.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="Extensions.cs" />

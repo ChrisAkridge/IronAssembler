@@ -11,10 +11,10 @@ namespace IronAssembler
 {
 	internal static class Linker
 	{
-		private const uint MagicNumber = 0x45584549; // "IEXE"
-		private const uint SpecificationVersion = 0x00010001;
-		private const uint AssemblerVersion = 0x00010001;
-		private const ulong HeaderSize = 28UL;
+		public const uint MagicNumber = 0x45584549; // "IEXE"
+		public const uint SpecificationVersion = 0x00010001;
+		public const uint AssemblerVersion = 0x00010001;
+		public const ulong HeaderSize = 28UL;
 
 		private static Logger logger = LogManager.GetCurrentClassLogger();
 

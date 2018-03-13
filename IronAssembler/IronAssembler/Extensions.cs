@@ -118,5 +118,30 @@ namespace IronAssembler
 				}
 			}
 		}
+
+		public static string FormatLongAsHex(this long value) => $"0x{value:X16}";
+
+		// https://stackoverflow.com/a/24769702/2709212
+		public static StringBuilder TrimEnd(this StringBuilder sb)
+		{
+			if (sb == null || sb.Length == 0) { return sb; }
+
+			int i = sb.Length - 1;
+			while (i >= 0)
+			{
+				if (!char.IsWhiteSpace(sb[i]))
+				{
+					break;
+				}
+				i--;
+			}
+
+			if (i < sb.Length - 1)
+			{
+				sb.Length = i + 1;
+			}
+
+			return sb;
+		}
 	}
 }

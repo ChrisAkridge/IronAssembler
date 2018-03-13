@@ -6,21 +6,41 @@ using System.Threading.Tasks;
 
 namespace IronAssembler.Data
 {
+	/// <summary>
+	/// Contains information about all IronArc instructions as <see cref="InstructionInfo"/> instances.
+	/// </summary>
 	internal static class InstructionTable
 	{
 		private static Dictionary<string, InstructionInfo> instructions;
 
+		/// <summary>
+		/// Looks up instruction info by an instruction's mnemonic value.
+		/// </summary>
+		/// <param name="mnemonic">The mnemonic for the instruction to look up.</param>
+		/// <returns>The <see cref="InstructionInfo"/> instance for this instruction.</returns>
 		public static InstructionInfo Lookup(string mnemonic)
 		{
 			return instructions[mnemonic];
 		}
 
+		/// <summary>
+		/// Attempts to look up info for an instruction by an instruction's mnemonic value.
+		/// </summary>
+		/// <param name="mnemonic">The mnemonic for the instruction to look up.</param>
+		/// <param name="info">Assigned the instruction's info if the mnemonic names an instruction, or null if it doesn't.</param>
+		/// <returns>True if the mnemonic names an instruction, false if it doesn't.</returns>
 		public static bool TryLookup(string mnemonic, out InstructionInfo info)
 		{
 			if (!instructions.ContainsKey(mnemonic)) { info = null; return false; }
 
 			info = Lookup(mnemonic);
 			return true;
+		}
+
+		internal static bool TryLookupByOpcode(ushort opcode, out InstructionInfo instructionInfo)
+		{
+			instructionInfo = instructions.FirstOrDefault(i => i.Value.Opcode == opcode).Value;
+			return instructionInfo != null;
 		}
 
 		static InstructionTable()
