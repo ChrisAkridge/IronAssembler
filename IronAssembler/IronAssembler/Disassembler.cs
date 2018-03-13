@@ -78,11 +78,19 @@ namespace IronAssembler
 			return programBuilder.ToString();
 		}
 
+		public static string DisassembleInstruction(byte[] memory, int offset, out int instructionLength,
+			out string instructionBytes)
+		{
+			using (var stream = new BinaryReader(new MemoryStream(memory)))
+			{
+				return DisassembleInstruction(stream, out instructionLength, out instructionBytes);
+			}
+		}
+
 		public static string DisassembleInstruction(BinaryReader memory, out int instructionLength,
 			out string instructionBytes)
 		{
 			var disassembledInstructionBuilder = new StringBuilder();
-			string bytesText = "";
 			long oldStreamPosition = memory.BaseStream.Position;
 
 			ushort opcode = memory.ReadUInt16();
