@@ -67,5 +67,7 @@ namespace IronAssembler.Data
 			OperandCount = operandCount;
 			CanUseLabels = canUseLabels;
 		}
+
+		public override string ToString() => Mnemonic;
 	}
 }

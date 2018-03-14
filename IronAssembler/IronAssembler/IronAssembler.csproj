@@ -61,6 +61,11 @@
     <Compile Include="Data\ParsedInstruction.cs" />
     <Compile Include="Data\ParsedStringTable.cs" />
     <Compile Include="Disassembler.cs" />
+    <Compile Include="DisassemblyWindows\DisassemblyWindow.cs" />
+    <Compile Include="DisassemblyWindows\InstructionBlock.cs" />
+    <Compile Include="DisassemblyWindows\InstructionBlockComparer.cs" />
+    <Compile Include="DisassemblyWindows\InstructionCache.cs" />
+    <Compile Include="DisassemblyWindows\WindowInstruction.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Exceptions.cs" />
     <Compile Include="Extensions.cs" />

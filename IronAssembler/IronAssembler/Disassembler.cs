@@ -83,6 +83,7 @@ namespace IronAssembler
 		{
 			using (var stream = new BinaryReader(new MemoryStream(memory)))
 			{
+				stream.BaseStream.Seek(offset, SeekOrigin.Begin);
 				return DisassembleInstruction(stream, out instructionLength, out instructionBytes);
 			}
 		}
@@ -95,7 +96,12 @@ namespace IronAssembler
 
 			ushort opcode = memory.ReadUInt16();
 			InstructionInfo info;
-			InstructionTable.TryLookupByOpcode(opcode, out info);
+			if (!InstructionTable.TryLookupByOpcode(opcode, out info))
+			{
+				instructionLength = 2;
+				instructionBytes = StreamBytesToString(memory, oldStreamPosition, 2);
+				return "?? ??";
+			}
 
 			bool hasFlagsByte = info.NeedsFlags;
 			int operandCount = info.OperandCount;
@@ -142,14 +148,17 @@ namespace IronAssembler
 			}
 
 			instructionLength = (int)(memory.BaseStream.Position - oldStreamPosition);
-
-			byte[] bytes = new byte[instructionLength];
-			memory.BaseStream.Seek(oldStreamPosition, SeekOrigin.Begin);
-			memory.Read(bytes, 0, instructionLength);
-			instructionBytes = string.Join(" ", bytes.Select(b => b.ToString("X2")));
-
+			instructionBytes = StreamBytesToString(memory, oldStreamPosition, instructionLength);
 
 			return "\t" + disassembledInstructionBuilder.ToString().TrimEnd();
+		}
+
+		private static string StreamBytesToString(BinaryReader stream, long startingPosition, int count)
+		{
+			byte[] bytes = new byte[count];
+			stream.BaseStream.Seek(startingPosition, SeekOrigin.Begin);
+			stream.Read(bytes, 0, count);
+			return string.Join(" ", bytes.Select(b => b.ToString("X2")));
 		}
 
 		private static string DisassembleOperand(BinaryReader stream, OperandSize? size, OperandType type)

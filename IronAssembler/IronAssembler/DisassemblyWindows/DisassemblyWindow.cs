@@ -13,14 +13,14 @@ namespace IronAssembler.DisassemblyWindows
 		private SortedSet<ulong> knownGoodAddress;
 		private InstructionCache cache;
 
-		private bool enableCaching = true;
+		private bool cachingEnabled = true;
 		private int sizeInInstructions;
 
 		public ulong StartAddress { get; private set; }
 
-		public bool EnableCaching
+		public bool CachingEnabled
 		{
-			get => enableCaching;
+			get => cachingEnabled;
 			set
 			{
 				// If we're enable caching,
@@ -28,7 +28,7 @@ namespace IronAssembler.DisassemblyWindows
 				//	2. For i from 0 to <window size>, cache the instruction returned by GetInstructionAtWindowPosition.
 				// If we're disabling caching,
 				//	1. Set the cache to null.
-				enableCaching = value;
+				cachingEnabled = value;
 			}
 		}
 
@@ -114,11 +114,30 @@ namespace IronAssembler.DisassemblyWindows
 
 		private WindowInstruction DisassembleInstructionAtAddress(ulong address)
 		{
+			// 1. If caching is enabled, ask the cache for the instruction and return that if present.
+			// 2. Call Disassembler.DisassembleInstruction() with our byte array and the address.
+			// 3. Create a new WindowInstruction from the result.
+			// 4. If caching is enabled, add the instruction to the cache.
+			// 5. Return the WindowInstruction.
+
 			return null;
+		}
+
+		private void FillWindow()
+		{
+			// 1. If the first instruction slot in the array is null,
+			//	a. Use FindNearestGoodAddress to find the address closest to the current start address.
+			//	b. If there is no nearest good address, give up and fill the window with ?? ??.
+			//	c. If there is, begin disassembling instructions from the known good address up to
+			//		and including the start address.
+			// 2. Once the first slot is filled, scan through the rest of the array, filling nulls
+			//	as we go with newly disassembled instructions.
 		}
 
 		private ulong FindNearestGoodAddress(ulong address)
 		{
+			// Given our sorted set of known good addresses, go through it until we find the one
+			//	closest to the provided address without going over.
 
 			return 1UL;
 		}
