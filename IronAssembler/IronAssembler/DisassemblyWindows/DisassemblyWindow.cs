@@ -1,22 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace IronAssembler.DisassemblyWindows
 {
-	public sealed class DisassemblyWindow
+	public sealed class DisassemblyWindow : IDisposable
 	{
-		private byte[] memory;
+		private UnmanagedMemoryStream memory;
+		private BinaryReader memoryReader;
 		private WindowInstruction[] instructions;
 		private SortedSet<ulong> knownGoodAddress;
 		private InstructionCache cache;
 
-		private bool cachingEnabled = true;
+		private bool disposed;
+
+		private bool cachingEnabled;
 		private int sizeInInstructions;
 
 		public ulong StartAddress { get; private set; }
+		private long Position => memoryReader.BaseStream.Position;
+
+		public event EventHandler<EventArgs> InstructionsChanged;
 
 		public bool CachingEnabled
 		{
@@ -28,6 +35,16 @@ namespace IronAssembler.DisassemblyWindows
 				//	2. For i from 0 to <window size>, cache the instruction returned by GetInstructionAtWindowPosition.
 				// If we're disabling caching,
 				//	1. Set the cache to null.
+				if (value)
+				{
+					cache = new InstructionCache();
+					for (int i = 0; i < SizeInInstructions; i++)
+					{
+						cache.CacheInstruction(GetInstructionAtWindowPosition(i));
+					}
+				}
+				else { cache = null; }
+
 				cachingEnabled = value;
 			}
 		}
@@ -51,13 +68,24 @@ namespace IronAssembler.DisassemblyWindows
 			}
 		}
 
-		public DisassemblyWindow(byte[] memory, int sizeInInstructions)
+		public DisassemblyWindow(UnmanagedMemoryStream memory, int sizeInInstructions)
 		{
+			cachingEnabled = true;
+			cache = new InstructionCache();
+
 			this.memory = memory;
 			this.sizeInInstructions = sizeInInstructions;
 
-			// 1. Create an instructions arrt of the window size.
-			// 2. From address 0, keep disassembling instructions until the array is filled.
+			memoryReader = new BinaryReader(memory);
+
+			instructions = new WindowInstruction[sizeInInstructions];
+
+			for (int i = 0; i < sizeInInstructions; i++)
+			{
+				instructions[i] = DisassembleInstructionAtAddress((ulong)Position);
+			}
+
+			OnInstructionsChanged();
 		}
 
 		public WindowInstruction GetInstructionAtWindowPosition(int position) => instructions[position];
@@ -93,6 +121,12 @@ namespace IronAssembler.DisassemblyWindows
 			// 4. Once TOP's address is reached, go to step 5.
 			// 5. Create a new array of instructions of the same window size. Copy from index 1 to index [window size - 2].
 			// 6. Set the instruction at index 0 to the newly loaded instruction.
+
+			ulong addressOfTopInstruction = GetInstructionAtWindowPosition(0).Address;
+			// WYLO: working here on the ScrollUpOne() method. This is where known good address come
+			// into play; I think StartAddress is supposed to be what Position is acting as, so we
+			// need to switch use of Position to StartAddress (the address of the first window
+			// instruction).
 		}
 
 		public void ScrollDownOne()
@@ -114,13 +148,24 @@ namespace IronAssembler.DisassemblyWindows
 
 		private WindowInstruction DisassembleInstructionAtAddress(ulong address)
 		{
-			// 1. If caching is enabled, ask the cache for the instruction and return that if present.
-			// 2. Call Disassembler.DisassembleInstruction() with our byte array and the address.
-			// 3. Create a new WindowInstruction from the result.
-			// 4. If caching is enabled, add the instruction to the cache.
-			// 5. Return the WindowInstruction.
+			if (CachingEnabled && cache.TryGetInstructionAtAddress(address, 
+				out WindowInstruction cachedInstruction))
+			{
+				return cachedInstruction;
+			}
 
-			return null;
+			memoryReader.BaseStream.Seek((long)address, SeekOrigin.Begin);
+			string disassemblyText = Disassembler.DisassembleInstruction(memoryReader,
+				out int instructionLength, out string instructionBytes);
+			var instruction = new WindowInstruction(address, disassemblyText, instructionBytes,
+				instructionLength);
+			
+			if (CachingEnabled)
+			{
+				cache.CacheInstruction(instruction);
+			}
+
+			return instruction;
 		}
 
 		private void FillWindow()
@@ -132,14 +177,47 @@ namespace IronAssembler.DisassemblyWindows
 			//		and including the start address.
 			// 2. Once the first slot is filled, scan through the rest of the array, filling nulls
 			//	as we go with newly disassembled instructions.
+
+			if (instructions[0] == null)
+			{
+				
+			}
+
+			OnInstructionsChanged();
 		}
 
-		private ulong FindNearestGoodAddress(ulong address)
+		private bool TryFindNearestGoodAddress(ulong address, out ulong goodAddress)
 		{
 			// Given our sorted set of known good addresses, go through it until we find the one
 			//	closest to the provided address without going over.
 
-			return 1UL;
+			goodAddress = 0UL;
+			return false;
+		}
+
+		private void OnInstructionsChanged()
+		{
+			InstructionsChanged?.Invoke(this, new EventArgs());
+		}
+
+		public void Dispose()
+		{
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		private void Dispose(bool disposing)
+		{
+			if (!disposed)
+			{
+				if (disposing)
+				{
+					memoryReader.Dispose();
+					// don't dispose memory here since it will dispose the unmanaged pointer
+					// which is probably still in use by the IronArc VM
+				}
+				disposed = true;
+			}
 		}
 	}
 }

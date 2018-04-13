@@ -20,5 +20,8 @@ namespace IronAssembler.DisassemblyWindows
 			Bytes = bytes;
 			SizeInBytes = sizeInBytes;
 		}
+
+		public override string ToString() =>
+			$"0x{Address:X16} {DisassemblyText}";
 	}
 }

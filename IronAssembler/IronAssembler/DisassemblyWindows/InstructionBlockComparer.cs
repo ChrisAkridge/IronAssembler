@@ -10,10 +10,8 @@ namespace IronAssembler.DisassemblyWindows
 	{
 		public int Compare(InstructionBlock x, InstructionBlock y)
 		{
-			// 1. If a's start is after b's end, a > b (return +1).
-			// 2. If b's end if before a's start, a < b (return -1).
-			// 3. Otherwise, either a and b are over the same addresses, or their is overlap. a == b (return 0).
-
+			if (x.StartAddress > y.EndAddress) { return 1; }
+			else if (y.EndAddress < x.StartAddress) { return -1; }
 			return 0;
 		}
 	}

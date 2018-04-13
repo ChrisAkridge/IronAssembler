@@ -83,4 +83,7 @@
     <Content Include="ironassembler.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy IronAssembler.dll C:\Users\Chris\Documents\GitHub\IronArc\IronArc\IronArcHost\bin\Debug</PostBuildEvent>
+  </PropertyGroup>
 </Project>

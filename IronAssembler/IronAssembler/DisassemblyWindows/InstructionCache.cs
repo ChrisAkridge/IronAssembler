@@ -10,11 +10,21 @@ namespace IronAssembler.DisassemblyWindows
 	{
 		private SortedSet<InstructionBlock> instructionCache;
 
+		public InstructionCache()
+		{
+			instructionCache = new SortedSet<InstructionBlock>(new InstructionBlockComparer());
+		}
+
 		public bool TryGetInstructionAtAddress(ulong address, out WindowInstruction instruction)
 		{
-			// 1. Get the block the instruction's in. Return false if there is no block for that
-			// address.
-			// 2. Call the block's GetInstructionAtAddress method to get the actual instruction.
+			foreach (InstructionBlock block in instructionCache)
+			{
+				if (address >= block.StartAddress && address < block.EndAddress)
+				{
+					instruction = block.GetInstructionAtAddress(address);
+					return true;
+				}
+			}
 
 			instruction = null;
 			return false;
@@ -22,25 +32,38 @@ namespace IronAssembler.DisassemblyWindows
 
 		public void CacheInstruction(WindowInstruction instruction)
 		{
-			// The first question to answer is: Is there a pre-existing block this instruction can
-			//	be prepended/appended to? To answer it:
-			//	1. Scan through all existing blocks. The block can be used if:
-			//		- the instruction's StartAddress + the instruction's length = the block's StartAddress
-			//		- the instruction's StartAddress = the block's EndAddress
-			// **Be sure to use an enumerator explicitly as we'll need to grab the previous and next
-			// blocks to check for merging. Also, keep track of the previous block every time we
-			// call MoveNext().**
-			
-			// If a block can be used:
-			//	1. Call PrependInstruction if the instruction's StartAddress < the block's
-			//		StartAddress, or AppendInstruction if the instruction's StartAddress = the
-			//		block's end address.
-			//  2. If the instruction was prepended, call MergeIfRequired(previousBlock, block).
-			//		Otherwise, call MergeIfRequired(block, nextBlock).
+			ulong instructionStartAddress = instruction.Address;
+			ulong instructionEndAddress = instruction.Address + (ulong)instruction.SizeInBytes;
 
-			// If a block cannot be used:
-			//	1. Create a new block with the InstructionBlock.StartNewBlock method.
-			//	2. Insert it into the sorted set of blocks.
+			SortedSet<InstructionBlock>.Enumerator enumerator = instructionCache.GetEnumerator();
+			InstructionBlock previousBlock = null;
+			while (enumerator.MoveNext())
+			{
+				InstructionBlock current = enumerator.Current;
+				if (current.StartAddress == instructionEndAddress)
+				{
+					// The instruction can be prepended to the block.
+					current.PrependInstruction(instruction);
+					if (previousBlock != null) { MergeIfRequired(previousBlock, current); }
+					return;
+				}
+				else if (current.EndAddress == instructionStartAddress)
+				{
+					// The instruction can be appended to the block.
+					current.AppendInstruction(instruction);
+					if (enumerator.MoveNext())
+					{
+						InstructionBlock nextBlock = enumerator.Current;
+						MergeIfRequired(current, nextBlock);
+					}
+					return;
+				}
+
+				previousBlock = current;
+			}
+
+			InstructionBlock newBlock = InstructionBlock.StartNewBlock(instruction);
+			instructionCache.Add(newBlock);
 		}
 
 		private bool TryGetInstructionBlockAtAddress(ulong address, out InstructionBlock block)
@@ -54,13 +77,13 @@ namespace IronAssembler.DisassemblyWindows
 
 		private void MergeIfRequired(InstructionBlock first, InstructionBlock second)
 		{
-			// First, check if a merge is required:
-			//	1. If first's EndAddress = second's StartAddress, a merge is required.
-			
-			// To perform the merge:
-			//	1. Remove both blocks from the cache for now.
-			//	2. Call first.MergeWith(second) to get the merged block.
-			//	3. Add the merged block to the cache.
+			if (first.EndAddress != second.StartAddress) { return; }
+
+			instructionCache.Remove(first);
+			instructionCache.Remove(second);
+
+			InstructionBlock mergedBlock = first.MergeWith(second);
+			instructionCache.Add(mergedBlock);
 		}
 	}
 }

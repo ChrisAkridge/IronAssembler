@@ -13,29 +13,42 @@ namespace IronAssembler.DisassemblyWindows
 		public ulong StartAddress { get; private set; }
 		public ulong EndAddress { get; private set; }
 
+		private InstructionBlock() { }
+
 		public WindowInstruction GetInstructionAtAddress(ulong address)
 		{
-			// 1. For each WindowInstruction in instructions,
-			//	a. Check if the instruction's address matches the requested address. Return it if so.
-			// 2. Throw an exception if no instruction's address matches.
+			foreach (WindowInstruction instruction in instructions)
+			{
+				if (instruction.Address == address) { return instruction; }
+			}
 
-			return null;
+			throw new ArgumentException($"No instruction at address 0x{address:X16} exists; are you sure you're in the right block?",
+				nameof(address));
 		}
 
 		public void PrependInstruction(WindowInstruction instruction)
 		{
-			// 1. If the instruction occurs IMMEDIATELY before the instruction at index 0,
-			//	a. Add the instruction to the list by using InsertAt with index 0.
-			//	b. Update StartAddress with the address of the new instruction.
-			// 2. If not, throw an exception.
+			if ((instruction.Address + (ulong)instruction.SizeInBytes) != instructions[0].Address)
+			{
+				throw new ArgumentException($"The instruction at 0x{instruction.Address:X16} (size 0x{instruction.SizeInBytes:X8}) isn't immediately before the first instruction in this block, which is at address 0x{instructions[0].Address:X16}.",
+					nameof(instruction));
+			}
+
+			instructions.Insert(0, instruction);
+			StartAddress = instruction.Address;
 		}
 
 		public void AppendInstruction(WindowInstruction instruction)
-		{ 
-			// 1. If the instruction occurs IMMEDIATELY after the last instruction in the list,
-			//	a. Add the instruction to the list by using Add.
-			//	b. Update EndAddress with the address of the end of the new instruction.
-			// 2. If not, throw an exception.
+		{
+			WindowInstruction lastInstruction = instructions.Last();
+			if ((lastInstruction.Address + (ulong)lastInstruction.SizeInBytes) != instruction.Address)
+			{
+				throw new ArgumentException($"The instruction at 0x{instruction.Address:X16} isn't immediately after the last instruction in this block, which is at address 0x{lastInstruction.Address:X16} (size 0x{lastInstruction.SizeInBytes:X8}).",
+					nameof(instruction));
+			}
+
+			instructions.Add(instruction);
+			EndAddress = instruction.Address + (ulong)instruction.SizeInBytes;
 		}
 
 		public static InstructionBlock StartNewBlock(WindowInstruction firstInstruction)
@@ -50,15 +63,30 @@ namespace IronAssembler.DisassemblyWindows
 
 		public InstructionBlock MergeWith(InstructionBlock other)
 		{
-			// 1. If other's EndAddress does not equal this block's StartAddress, or vice versa, throw.
-			// 2. Create a new InstructionBlock with the two lists of instructions.
-			// 3. If other occurs before this, set the new block's StartAddress to other.StartAddress
-			//		and the new block's EndAddress to this.EndAddress.
-			// 4. If other occurs after this, set the new block's StartAddress to this.StartAddress
-			//		and the new block's EndAddress to other.EndAddress.
-			// 5. Return the new block.
+			if (other.EndAddress != StartAddress || other.StartAddress != EndAddress)
+			{
+				throw new ArgumentException($"The instruction blocks to merge were not adjacent. Block 1 starts at 0x{StartAddress:X16}, ends at 0x{EndAddress:X16}. Block 2 starts at 0x{other.StartAddress:X16}, ends at 0x{other.EndAddress:X16}.",
+					nameof(other));
+			}
 
-			return null;
+			var mergedBlock = new InstructionBlock();
+
+			if (other.EndAddress == StartAddress)
+			{
+				// other is BEFORE this block
+				mergedBlock.instructions = new List<WindowInstruction>(other.instructions.Concat(instructions));
+				mergedBlock.StartAddress = other.StartAddress;
+				mergedBlock.EndAddress = EndAddress;
+			}
+			else if (EndAddress == other.StartAddress)
+			{
+				// other is AFTER this block
+				mergedBlock.instructions = new List<WindowInstruction>(instructions.Concat(other.instructions));
+				mergedBlock.StartAddress = StartAddress;
+				mergedBlock.EndAddress = other.EndAddress;
+			}
+
+			return mergedBlock;
 		}
 	}
 }
