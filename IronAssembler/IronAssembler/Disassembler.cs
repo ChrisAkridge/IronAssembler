@@ -12,7 +12,8 @@ namespace IronAssembler
 	{
 		private const uint MaximumSupportedSpecVersion = 0x00010001;
 		private const uint MaximumSupportedAssemblerVersion = 0x00010001;
-		private const int AddressColumnLength = 20;	// 0x (2 chars), then the address (16 chars), then two spaces
+		private const int AddressColumnLength = 20; // 0x (2 chars), then the address (16 chars), then two spaces
+		internal const string IllegalInstruction = "?? ??";
 
 		public static string DisassembleProgram(byte[] program, bool displayAddress = false, bool displayBytes = false)
 		{
@@ -100,7 +101,7 @@ namespace IronAssembler
 			{
 				instructionLength = 2;
 				instructionBytes = StreamBytesToString(memory, oldStreamPosition, 2);
-				return "?? ??";
+				return IllegalInstruction;
 			}
 
 			bool hasFlagsByte = info.NeedsFlags;

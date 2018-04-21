@@ -12,7 +12,7 @@ namespace IronAssembler.DisassemblyWindows
 		private UnmanagedMemoryStream memory;
 		private BinaryReader memoryReader;
 		private WindowInstruction[] instructions;
-		private SortedSet<ulong> knownGoodAddress;
+		private SortedSet<ulong> knownGoodAddresses;
 		private InstructionCache cache;
 
 		private bool disposed;
@@ -20,7 +20,7 @@ namespace IronAssembler.DisassemblyWindows
 		private bool cachingEnabled;
 		private int sizeInInstructions;
 
-		public ulong StartAddress { get; private set; }
+		public ulong TopAddress { get; private set; }
 		private long Position => memoryReader.BaseStream.Position;
 
 		public event EventHandler<EventArgs> InstructionsChanged;
@@ -72,6 +72,7 @@ namespace IronAssembler.DisassemblyWindows
 		{
 			cachingEnabled = true;
 			cache = new InstructionCache();
+			knownGoodAddresses = new SortedSet<ulong>();
 
 			this.memory = memory;
 			this.sizeInInstructions = sizeInInstructions;
@@ -141,9 +142,22 @@ namespace IronAssembler.DisassemblyWindows
 
 		public void SeekToAddress(ulong address)
 		{
-			// 1. Create an empty array of instructions.
-			// 2. Disassemble enough instructions to fill the window.
-			// 3. If the first instruction is valid, add the address parameter as a known good address.
+			memoryReader.BaseStream.Seek((long)address, SeekOrigin.Begin);	
+
+			WindowInstruction[] instructions = new WindowInstruction[SizeInInstructions];
+			for (int i = 0; i < sizeInInstructions; i++)
+			{
+				instructions[i] = DisassembleInstructionAtAddress((ulong)Position);
+			}
+
+			this.instructions = instructions;
+			if (instructions[0].DisassemblyText != Disassembler.IllegalInstruction)
+			{
+				knownGoodAddresses.Add(instructions[0].Address);
+			}
+
+
+			OnInstructionsChanged();
 		}
 
 		private WindowInstruction DisassembleInstructionAtAddress(ulong address)
@@ -151,6 +165,8 @@ namespace IronAssembler.DisassemblyWindows
 			if (CachingEnabled && cache.TryGetInstructionAtAddress(address, 
 				out WindowInstruction cachedInstruction))
 			{
+				memoryReader.BaseStream.Seek((long)(address + (ulong)cachedInstruction.SizeInBytes), 
+					SeekOrigin.Begin);
 				return cachedInstruction;
 			}
 
