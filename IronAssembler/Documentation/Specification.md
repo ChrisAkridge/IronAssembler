@@ -192,7 +192,7 @@ Following the count and addresses are each string in the table, in the order the
 All numeric values in the string table (string count, addresses, byte counts) must be in reverse order if a little-endian file is being produced.
 
 ## Disassembler
-IronAssembler will support the ability to disassemble IronArc executable files back into IronArc Direct Assembly. The disassembler will support disassembling entire programs or blocks of bytes.
+IronAssembler will support the ability to disassemble IronArc executable files back into IronArc Direct Assembly. The disassembler will support disassembling entire programs or sequeunces of bytes at a pointer or from a memory stream.
 
 The core of the disassembler is the ability to disassemble individual instructions. The disassembler starts by reading the two-byte opcode and looking up information about the operands that follow, if any. Next, the flags byte is read (if present) and used to determine the size of the data and the types of the operands that follow.
 
@@ -204,12 +204,6 @@ Entire *.iexe file disassembly is intended to produce a text file that can then 
 
 Another key usage of disassemblers is in debuggers. Typically, a debugger gives a view into only a portion of the program's code at a time, typically in a window the user can scroll in or set to a different location of the program.
 
-Thus, IronAssembler's disassembler, in addition to the ability to disassemble entire *.iexe files, will support the concept of disassembly windows. A disassembly window is composed of an address into a block of bytes (typically memory) and a number of instructions to disassemble from that address. Each disassembled instruction is additionally marked with its address in memory. This allows the window to scroll cleanly through memory.
+Thus, IronAssembler's disassembler, in addition to the ability to disassemble entire *.iexe files, will support the concept of disassembly windows. A disassembly window is composed of an address into a block of bytes (typically memory) and a number of instructions to disassemble from that address. Each disassembled instruction is additionally marked with its address in memory.
 
 Every block of bytes is expected to have bytes that are not IronArc instructions. Each pair of such invalid bytes in a disassembly window will be displayed as `?? ??`.
-
-One difficulty in disassembling IronArc programs is the direction of the disassembly. Forward disassembly is easy, but backwards disassembly is very difficult as each instruction is anywhere from 2 to 27 bytes long and it's impossible to know where each operand begins. Thus, the disassembly window will maintain a list of "known good addresses" which map to the start of an instruction. Programs using IronAssembler can add their own "known good addresses" as well.
-
-If the user scrolls up, thereby requesting to disassemble instructions before the currently displayed instructions, the disassembler will see if there are any known good addresses before the current address. If there are, it will disassemble from the last known good address up to the requested address.
-
-In order to save time from disassembling the same instructions again and again, disassembly windows support caching of instructions at each address. This means that instructions already disassembled will merely be displayed again when seeked to, instead of disassembling them again. This feature can be disabled if the program is known to change (i.e. self-modifying programs or programs being loaded into and out of memory). Disabling disassembly caching will clear the cache.
