@@ -43,10 +43,13 @@ Below are examples of invalid labels.
 10th_block:
 123:
 :
+globals:
 strings:
 ```
 
-Blocks are then followed by one or more instructions, each on their own line. No block may have zero instructions. For readability, instructions should be indented by one level (spaces or a tab).
+The first block in the file should be called `globals:`. This tells the assembler how many bytes to include to make space for global variables. The `globals:` label should be followed by a decimal number indicating the number of bytes.
+
+Blocks (except for `globals:` and `strings:`) are then followed by one or more instructions, each on their own line. No block may have zero instructions. For readability, instructions should be indented by one level (spaces or a tab).
 
 An instruction is a whitespace-delimited group of tokens all on one line. Whitespace is the only valid delimiter; commas or semicolons are illegal.
 
@@ -155,12 +158,14 @@ The header is composed of the following data:
 | **Field**                 | **Size** | **Value**                                                                                                                                                                                 | **Endianness**                                         |
 |---------------------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
 | Magic Number              | 4 bytes  | The ASCII value "`IEXE`" (`0x49455845`)                                                                                                                                                   | Always stored in that order, regardless of endianness. |
-| Specification Version     | 4 bytes  | Two two-byte numbers that compose a major and minor version. *The current specification is version `0x00010001`.*                                                                         | Reverse bytes if producing little endian.              |
+| Specification Version     | 4 bytes  | Two two-byte numbers that compose a major and minor version. *The current specification is version `0x00010002`.*                                                                         | Reverse bytes if producing little endian.              |
 | Assembler Version         | 4 bytes  | Two two-byte numbers that compose a major and minor version. Hand-written IronArc Executable files should have version `0x00000000`. An assembler can use any two numbers for this value. | Reverse bytes if producing little endian.              |
 | First Instruction Address | 8 bytes  | The address of the start of the first instruction (the first byte of the opcode).                                                                                                         | Reverse bytes if producing little endian.              |
 | String Table Address      | 8 bytes  | The address of the start of the string table (the first byte of the number of strings in the table).                                                                                      | Reverse bytes if producing little endian.              |
 
-Immediately following the header is a sequence of instructions. These instructions must be generated from the blocks in the assembly file, in the order the blocks where declared in the file (ignoring the `strings:` block). Instructions have no padding or alignment requirements.
+Immediately following the header is a group of `00` bytes, the count of which is defined in the `globals:` block label at the start of the assembly file. If the byte count is `0`, there are no bytes emitted.
+
+Following the global variable bytes is a sequence of instructions. These instructions must be generated from the blocks in the assembly file, in the order the blocks where declared in the file (ignoring the `strings:` block). Instructions have no padding or alignment requirements.
 
 Each instruction starts with a two-byte opcode as defined by the instruction reference. The bytes should be written in reverse order if producing a little-endian file (the opcode for `jmp` would be written as `02 00`).
 

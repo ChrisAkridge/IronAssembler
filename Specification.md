@@ -11,8 +11,21 @@ IronAssembler may assemble from one file containing assembly instructions. This 
 
 ```
   assembly-file:
+    global-variable-block then
     Zero or more blocks then
     string-table
+
+  global-variable-block:
+    globals: then
+    newline then
+    Zero or more global-variable-declarations
+
+  global-variable-declaration:
+    operand-size then
+    One or more whitespaces then
+    identifier then
+    One or more whitespaces then
+    One, two, four, or eight hexadecimal-digits
 
   block:
     label then
@@ -29,6 +42,9 @@ IronAssembler may assemble from one file containing assembly instructions. This 
 
   label-characters:
     One of {abcdefghijklmnopqrstuvwxyz0123456789_}
+
+  identifier:
+    label
 
   newline:
     cr-lf-newline OR
@@ -160,15 +176,15 @@ In the first stage, the entire input file is loaded into memory. It is then spli
 Each line of the input file is here converted into the following structure:
 
 ```
-	Dictionary<string, Label> Labels
-		KeyValuePair<string, Label> LabelKVP
-			Key: name of label
-			Value:
-				class Label
-				{
-					string Name;
-					List<string> Instructions;
-				}
+  Dictionary<string, Label> Labels
+    KeyValuePair<string, Label> LabelKVP
+      Key: name of label
+      Value:
+      class Label
+      {
+        string Name;
+        List<string> Instructions;
+      }
 ```
 
 ### Stage 3: Assembling Labels
