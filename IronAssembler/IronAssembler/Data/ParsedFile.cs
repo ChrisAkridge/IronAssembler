@@ -12,11 +12,14 @@ namespace IronAssembler.Data
 
 		public IReadOnlyList<ParsedBlock> Blocks => blocks.AsReadOnly();
 		public ParsedStringTable StringTable { get; }
+		public int SizeOfGlobalVariableBlock { get; }
 
-		public ParsedFile(IEnumerable<ParsedBlock> blocks, ParsedStringTable stringTable)
+		public ParsedFile(IEnumerable<ParsedBlock> blocks, ParsedStringTable stringTable,
+			int sizeOfGlobalVariableBlock)
 		{
 			this.blocks = blocks.ToList();
 			StringTable = stringTable;
+			SizeOfGlobalVariableBlock = sizeOfGlobalVariableBlock;
 		}
 	}
 }

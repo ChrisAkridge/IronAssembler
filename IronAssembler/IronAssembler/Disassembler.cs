@@ -10,9 +10,10 @@ namespace IronAssembler
 {
 	public static class Disassembler
 	{
-		private const uint MaximumSupportedSpecVersion = 0x00010001;
-		private const uint MaximumSupportedAssemblerVersion = 0x00010001;
+		private const uint MaximumSupportedSpecVersion = 0x00010002;
+		private const uint MaximumSupportedAssemblerVersion = 0x00010002;
 		private const int AddressColumnLength = 20; // 0x (2 chars), then the address (16 chars), then two spaces
+		private const ulong HeaderSize = 28UL;
 		internal const string IllegalInstruction = "?? ??";
 
 		public static string DisassembleProgram(byte[] program, bool displayAddress = false, bool displayBytes = false)
@@ -35,19 +36,22 @@ namespace IronAssembler
 				if (assemblerVersion > MaximumSupportedAssemblerVersion) { return "Program not supported."; }
 
 				ulong firstInstructionAddress = stream.ReadUInt64();
+				uint globalsSize = (uint)(firstInstructionAddress - HeaderSize);
 				ulong stringsTableAddress = stream.ReadUInt64();
 				ulong instructionsLength = (stringsTableAddress - firstInstructionAddress);
+
+				programBuilder.AppendLine($"globals: {globalsSize}");
+
+				stream.BaseStream.Seek((long)firstInstructionAddress, SeekOrigin.Begin);
 
 				programBuilder.AppendLine("main:");
 
 				ulong instructionBytesProcessed = 0UL;
-				int instructionLength = 0;
 				while (instructionBytesProcessed < instructionsLength)
 				{
 					addressLines.Add((displayAddress) ? stream.BaseStream.Position.FormatLongAsHex() : "");
 
-					string instructionBytes = "";
-					instructionLines.Add(DisassembleInstruction(stream, out instructionLength, out instructionBytes));
+					instructionLines.Add(DisassembleInstruction(stream, out int instructionLength, out string instructionBytes));
 
 					byteLines.Add((displayBytes) ? instructionBytes : "");
 

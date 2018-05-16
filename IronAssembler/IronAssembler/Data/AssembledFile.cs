@@ -18,13 +18,16 @@ namespace IronAssembler.Data
 		/// </summary>
 		public IReadOnlyList<AssembledBlock> Blocks => blocks.AsReadOnly();
 
+		public int SizeOfGlobalVariableBlock { get; }
+
 		/// <summary>
 		/// Initializes a new instance of the <see cref="AssembledFile"/> class.
 		/// </summary>
 		/// <param name="blocks">A sequence of assembled blocks.</param>
-		public AssembledFile(IEnumerable<AssembledBlock> blocks)
+		public AssembledFile(IEnumerable<AssembledBlock> blocks, int sizeOfGlobalVariableBlock)
 		{
 			this.blocks = blocks.ToList();
+			SizeOfGlobalVariableBlock = sizeOfGlobalVariableBlock;
 		}
 	}
 }

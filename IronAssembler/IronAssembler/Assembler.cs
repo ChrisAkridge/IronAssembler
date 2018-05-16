@@ -58,24 +58,16 @@ namespace IronAssembler
 		internal static AssembledFile AssembleFile(ParsedFile file)
 		{
 			var blocks = new List<AssembledBlock>(file.Blocks.Count);
+			blocks.AddRange(file.Blocks.Select(AssembleBlock));
 
-			foreach (var block in file.Blocks)
-			{
-				blocks.Add(AssembleBlock(block));
-			}
-
-			return new AssembledFile(blocks);
+			return new AssembledFile(blocks, file.SizeOfGlobalVariableBlock);
 		}
 
 		private static AssembledBlock AssembleBlock(ParsedBlock block)
 		{
 			logger.Trace($"Assembling block {block.Name}");
 			var instructions = new List<AssembledInstruction>(block.Instructions.Count);
-
-			foreach (var instruction in block.Instructions)
-			{
-				instructions.Add(AssembleInstruction(instruction));
-			}
+			instructions.AddRange(block.Instructions.Select(AssembleInstruction));
 
 			ulong blockSizeInBytes = (ulong)instructions.Sum(i => i.Bytes.Count);
 			logger.Trace($"Assembled block {block.Name} with {instructions.Count} instructions, totalling {blockSizeInBytes} bytes");

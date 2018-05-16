@@ -20,15 +20,10 @@ namespace IronAssembler
 		public static byte[] AssembleProgram(string program, bool isDirectAssemblyFile)
 		{
 			logger.Info("Start I/O Stage");
-			IList<string> programLines = new List<string>();
-			if (!isDirectAssemblyFile)
-			{
-				programLines = Translator.TranslateFile(program);
-			}
-			else
-			{
-				programLines = IO.SplitInputByLine(program);
-			}
+
+			IList<string> programLines =
+				!isDirectAssemblyFile ? Translator.TranslateFile(program) : IO.SplitInputByLine(program);
+
 			logger.Info("End I/O Stage");
 
 			logger.Info("Start Parsing Stage");

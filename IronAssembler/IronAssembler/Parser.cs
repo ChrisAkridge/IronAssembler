@@ -13,22 +13,24 @@ namespace IronAssembler
 	internal static class Parser
 	{
 		private static Logger logger = LogManager.GetCurrentClassLogger();
-		
+
 		internal static ParsedFile ParseFile(IList<string> programLines)
 		{
 			logger.Trace($"Parsing file of {programLines.Count} line(s)");
-			int stringsLabelLocation;
-			var labelLocations = ScanProgramForLabels(programLines, out stringsLabelLocation);
-			var blocks = ParseBlocks(programLines, labelLocations);
-			var stringsTable = ParseStringsTable(programLines, stringsLabelLocation);
+			Dictionary<string, int> labelLocations = GetLabelLocations(programLines, out int stringsLabelLocation,
+				out int sizeOfGlobalVariableBlock);
+			IEnumerable<ParsedBlock> blocks = ParseBlocks(programLines, labelLocations);
+			ParsedStringTable stringsTable = ParseStringsTable(programLines, stringsLabelLocation);
 
-			return new ParsedFile(blocks, stringsTable);
+			return new ParsedFile(blocks, stringsTable, sizeOfGlobalVariableBlock);
 		}
 
-		private static Dictionary<string, int> ScanProgramForLabels(IList<string> lines, out int stringsLabelIndex)
+		private static Dictionary<string, int> GetLabelLocations(IList<string> lines, out int stringsLabelIndex,
+			out int sizeOfGlobalVariableBlock)
 		{
 			var labelLocations = new Dictionary<string, int>();
 			int stringsLabelLineIndex = -1;
+			sizeOfGlobalVariableBlock = -1;
 
 			if (!IsLabelLine(lines.First()))
 			{
@@ -41,6 +43,15 @@ namespace IronAssembler
 
 				if (IsLabelLine(line))
 				{
+					if (line.ToLowerInvariant().StartsWith("globals:"))
+					{
+						if (i != 0)
+						{
+							throw new ParsingException("The globals size label must be the first line of the program.");
+						}
+						sizeOfGlobalVariableBlock = int.Parse(line.Split(' ').Last());
+						continue;
+					}
 					if (line.ToLowerInvariant() == "strings:")
 					{
 						if (stringsLabelLineIndex != -1)
@@ -63,20 +74,25 @@ namespace IronAssembler
 
 			logger.Trace($"Parsed {lines.Count} lines, found {labelLocations.Count} label(s)");
 			stringsLabelIndex = stringsLabelLineIndex;
+
+			if (sizeOfGlobalVariableBlock == -1)
+			{
+				throw new ParsingException("No globals size label was found.");
+			}
+
 			return labelLocations;
 		}
 
-		private static IList<ParsedBlock> ParseBlocks(IList<string> lines, IDictionary<string, int> labelLocations)
+		private static IEnumerable<ParsedBlock> ParseBlocks(IList<string> lines, IDictionary<string, int> labelLocations)
 		{
 			var blocks = new List<ParsedBlock>();
 			var currentBlockInstructions = new List<ParsedInstruction>();
 
-			foreach (var kvp in labelLocations)
+			foreach (KeyValuePair<string, int> kvp in labelLocations)
 			{
 				logger.Trace($"Parsing block {kvp.Key}");
 				for (int i = kvp.Value + 1; i <= lines.Count; i++)
 				{
-
 					string line = lines[i];
 					if (IsLabelLine(line))
 					{
@@ -137,13 +153,12 @@ namespace IronAssembler
 			var parts = instructionLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
 				.Select(s => s.Trim()).ToArray();
 
-			InstructionInfo info;
-			if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out info))
+			if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out InstructionInfo info))
 			{
 				throw new ParsingException($"There is no instruction with the mnemonic {parts[0]}.");
 			}
 
-			var size = OperandSize.Default;
+			OperandSize size = OperandSize.Default;
 			if (info.NeedsSize)
 			{
 				if (parts.Length == 1)
@@ -225,20 +240,18 @@ namespace IronAssembler
 			// and continue with zero or more character in [_a-zA-Z0-9]
 			// and end with a :
 			// The entire line must match
-			string labelRegex = @"^[_a-zA-Z][_a-zA-Z0-9]*:$";
-			var match = Regex.Match(line, labelRegex);
+			const string labelRegex = @"^[_a-zA-Z][_a-zA-Z0-9]*:$";
+			Match match = Regex.Match(line, labelRegex);
 
-			return match.Success;
+			return match.Success || line.ToLowerInvariant().StartsWith("globals");
 		}
 
 		private static bool IsValidSize(string operand)
-		{
-			return operand == "byte" || operand == "word" || operand == "dword" || operand == "qword";
-		}
+			=> operand == "byte" || operand == "word" || operand == "dword" || operand == "qword";
 
 		private static string ParseTableString(string tableString)
 		{
-			StringBuilder resultBuilder = new StringBuilder(tableString.Length);
+			var resultBuilder = new StringBuilder(tableString.Length);
 
 			for (int i = 0; i < tableString.Length; i++)
 			{
@@ -257,37 +270,57 @@ namespace IronAssembler
 					}
 
 					char next = tableString[i + 1];
-					if (next == '\'') { resultBuilder.Append('\''); i++; }
-					else if (next == '\"') { resultBuilder.Append('\"'); i++; }
-					else if (next == '0') { resultBuilder.Append('\0'); i++; }
-					else if (next == 'a') { resultBuilder.Append('\a'); i++; }
-					else if (next == 'b') { resultBuilder.Append('\b'); i++; }
-					else if (next == 'f') { resultBuilder.Append('\f'); i++; }
-					else if (next == 'n') { resultBuilder.Append('\n'); i++; }
-					else if (next == 'r') { resultBuilder.Append('\r'); i++; }
-					else if (next == 't') { resultBuilder.Append('\t'); i++; }
-					else if (next == 'v') { resultBuilder.Append('\v'); i++; }
-					else if (next == 'u' || next == 'U')
+					switch (next)
 					{
-						int codePointLength = (next == 'u') ? 4 : 8;
-						if (i + 1 + codePointLength > tableString.Length - 1)
-						{
-							throw new ParsingException($"An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.");
-						}
-						string codePointString = tableString.Substring(i + 2, codePointLength);
-						int codePoint;
-						if (!int.TryParse(codePointString, NumberStyles.HexNumber,
-							CultureInfo.CurrentCulture, out codePoint))
-						{
-							throw new ParsingException($"The sequence {codePointString} is not a valid Unicode code point.");
-						}
+						case '\'':
+							resultBuilder.Append('\''); i++;
+							break;
+						case '\"':
+							resultBuilder.Append('\"'); i++;
+							break;
+						case '0':
+							resultBuilder.Append('\0'); i++;
+							break;
+						case 'a':
+							resultBuilder.Append('\a'); i++;
+							break;
+						case 'b':
+							resultBuilder.Append('\b'); i++;
+							break;
+						case 'f':
+							resultBuilder.Append('\f'); i++;
+							break;
+						case 'n':
+							resultBuilder.Append('\n'); i++;
+							break;
+						case 'r':
+							resultBuilder.Append('\r'); i++;
+							break;
+						case 't':
+							resultBuilder.Append('\t'); i++;
+							break;
+						case 'v':
+							resultBuilder.Append('\v'); i++;
+							break;
+						case 'u':
+						case 'U':
+							int codePointLength = (next == 'u') ? 4 : 8;
+							if (i + 1 + codePointLength > tableString.Length - 1)
+							{
+								throw new ParsingException($"An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.");
+							}
+							string codePointString = tableString.Substring(i + 2, codePointLength);
+							if (!int.TryParse(codePointString, NumberStyles.HexNumber,
+								CultureInfo.CurrentCulture, out int codePoint))
+							{
+								throw new ParsingException($"The sequence {codePointString} is not a valid Unicode code point.");
+							}
 
-						resultBuilder.Append(char.ConvertFromUtf32(codePoint));
-						i += 1 + codePointLength;
-					}
-					else
-					{
-						throw new ParsingException($"Unrecognized escape sequence \\{next} at index {i}");
+							resultBuilder.Append(char.ConvertFromUtf32(codePoint));
+							i += 1 + codePointLength;
+							break;
+						default:
+							throw new ParsingException($"Unrecognized escape sequence \\{next} at index {i}");
 					}
 				}
 				else

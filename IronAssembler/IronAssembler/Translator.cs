@@ -39,7 +39,7 @@ namespace IronAssembler
 			logger.Trace($"Translating file of {inputFileLines.Count} lines");
 
 			inputFileLines = RemoveComments(inputFileLines);
-			List<string> translatedLines = new List<string>(inputFileLines.Count);
+			var translatedLines = new List<string>(inputFileLines.Count);
 
 			foreach (string line in inputFileLines)
 			{
@@ -72,7 +72,7 @@ namespace IronAssembler
 			return translatedLines;
 		}
 
-		private static IList<string> RemoveComments(IList<string> lines)
+		private static IList<string> RemoveComments(IEnumerable<string> lines)
 		{
 			var linesWithoutComments = new List<string>();
 
@@ -295,15 +295,11 @@ namespace IronAssembler
 			return lines.Concat(BuildStringsTable(stringsTable)).ToList();
 		}
 
-		private static IList<string> BuildStringsTable(IList<string> stringsTable)
+		private static IEnumerable<string> BuildStringsTable(IEnumerable<string> stringsTable)
 		{
-			List<string> stringsTableLines = new List<string>();
-			stringsTableLines.Add("strings:");
+			List<string> stringsTableLines = new List<string> {"strings:"};
 
-			for (int i = 0; i < stringsTable.Count; i++)
-			{
-				stringsTableLines.Add(i.ToString() + ": " + stringsTable[i]);
-			}
+			stringsTableLines.AddRange(stringsTable.Select((t, i) => i.ToString() + ": " + t));
 
 			return stringsTableLines;
 		}

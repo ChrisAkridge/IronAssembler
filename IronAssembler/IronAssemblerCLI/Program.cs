@@ -42,7 +42,7 @@ namespace IronAssemblerCLI
 				}
 				else
 				{
-					var inputFile = File.ReadAllBytes(options.Value.InputFilePath);
+					byte[] inputFile = File.ReadAllBytes(options.Value.InputFilePath);
 					Console.WriteLine($"Loaded file, length {inputFile.Length} byte(s).");
 
 					string disassembled = Disassembler.DisassembleProgram(inputFile, true, true);
