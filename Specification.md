@@ -10,27 +10,30 @@ IronAssembler assembles sequences of instructions bundled beneath labels. Labels
 IronAssembler may assemble from one file containing assembly instructions. This file will adhere to the following grammar:
 
 ```
+  comment:
+	number sign (U+0023) then
+	Zero or more of any Unicode character that is not a newline
+	newline
+
   assembly-file:
+	Zero or more comments then
     global-variable-block then
+	Zero or more comments then
     Zero or more blocks then
+	Zero or more comments then
     string-table
 
   global-variable-block:
     globals: then
-    newline then
-    Zero or more global-variable-declarations
-
-  global-variable-declaration:
-    operand-size then
-    One or more whitespaces then
-    identifier then
-    One or more whitespaces then
-    One, two, four, or eight hexadecimal-digits
+    numeric-literal then
+	Zero or one comments
 
   block:
     label then
     colon (U+003A) then
-    newline
+	Zero or one comments
+    newline then
+	Zero or more comments then
     Zero or more assembly-instructions
 
   label:
@@ -82,7 +85,8 @@ IronAssembler may assemble from one file containing assembly instructions. This 
     zero-operand-instruction OR
     one-operand-instruction OR
     two-operand-instruction OR
-    three-operand-instruction OR
+    three-operand-instruction then
+	Zero or one comment then
     newline
 
   zero-operand-instruction:
@@ -120,7 +124,7 @@ IronAssembler may assemble from one file containing assembly instructions. This 
     processor-register-pointer-offset OR
     numeric-literal OR
     string-table-entry OR
-    label-ref then
+    label then
     whitespace
 
   processor-register:
@@ -141,20 +145,18 @@ IronAssembler may assemble from one file containing assembly instructions. This 
 
   string-table-entry:
     str: then
-    Decimal number
-
-  label-ref:
-    One label-start-character then
-    Zero or more label-characters
+    numeric-literal
 
   string-table:
     strings: then
+	Zero or more comments then
     Zero or more string-table-literal
 
   string-table-literal:
     Decimal number then
     : then
-    string-literal
+    string-literal then
+	Zero or one comment
 
   string-literal:
     Quotation mark (U+0022) then
@@ -170,7 +172,7 @@ All instructions, labels, and string table literals must be on one line. There c
 ## Stages of Assembling
 
 ### Stage 1: Loading Input
-In the first stage, the entire input file is loaded into memory. It is then split on `\r, \n, or \r\n` into an array of lines. Each line is trimmed of whitespace on both sides.
+In the first stage, the entire input file is loaded into memory. It is then split on `\r, \n, or \r\n` into an array of lines. Any line starting with `#` is replaced with a blank line, and any line containing a `#` has the `#` and everything after replaced with a single space. Finally, each line is trimmed of whitespace on both sides.
 
 ### Stage 2: Parsing
 Each line of the input file is here converted into the following structure:

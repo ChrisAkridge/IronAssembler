@@ -9,299 +9,301 @@ using NLog;
 
 namespace IronAssembler
 {
-	public static class Translator
-	{
-		private static Logger logger = LogManager.GetCurrentClassLogger();
+    public static class Translator
+    {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-		#region Regexes
-		// Matches a register containing a pointer with an offset (*eax+0x2DE, *ecx-0x3FD)
-		// Match an *, an e, one or more letters, a single + or -, an 0x, then one or more hex digits
-		private const string RegisterWithHexadecimalOffsetRegex = @"\*e[a-z]+(\+|-)0x[0-9A-Fa-f]+";
+        #region Regexes
+        // Matches a register containing a pointer with an offset (*eax+0x2DE, *ecx-0x3FD)
+        // Match an *, an e, one or more letters, a single + or -, an 0x, then one or more hex digits
+        private const string RegisterWithHexadecimalOffsetRegex = @"\*e[a-z]+(\+|-)0x[0-9A-Fa-f]+";
 
-		// Matches a memory address (mem:0x2030, mem:0xFDE2)
-		// Matches (case-insensitively) mem:0x, then one or more hex digits
-		private const string MemoryAddressRegex = @"(?i)mem:0x[0-9A-Z]+";
+        // Matches a memory address (mem:0x2030, mem:0xFDE2)
+        // Matches (case-insensitively) mem:0x, then one or more hex digits
+        private const string MemoryAddressRegex = @"(?i)mem:0x[0-9A-Z]+";
 
-		// Matches a hexadecimal number (0x20495, 0x1040A)
-		// Matches (case-insensitively) 0x, then one or more hex digits
-		private const string HexadecimalNumberRegex = @"(?i)0x[0-9A-Z]+";
+        // Matches a hexadecimal number (0x20495, 0x1040A)
+        // Matches (case-insensitively) 0x, then one or more hex digits
+        private const string HexadecimalNumberRegex = @"(?i)0x[0-9A-Z]+";
 
-		// Matches a floating point number (single(346), double(3.1415962))
-		// Matches (case-insensitively), single or double, then (, then either a digit, period, and
-		//	one or more digits, OR matches one or more digits, then a )
-		private const string FloatingPointNumberRegex = @"(?i)(single|double)\(([0-9]\.[0-9]+|[0-9]+)\)";
-		#endregion
+        // Matches a floating point number (single(346), double(3.1415962))
+        // Matches (case-insensitively), single or double, then (, then either a digit, period, and
+        //	one or more digits, OR matches one or more digits, then a )
+        private const string FloatingPointNumberRegex = @"(?i)(single|double)\(([0-9]\.[0-9]+|[0-9]+)\)";
+        #endregion
 
-		public static IList<string> TranslateFile(string inputFile) => TranslateFile(IO.SplitInputByLine(inputFile));
+        public static IList<string> TranslateFile(string inputFile) => TranslateFile(IO.SplitInputByLine(inputFile));
 
-		public static IList<string> TranslateFile(IList<string> inputFileLines)
-		{
-			logger.Trace($"Translating file of {inputFileLines.Count} lines");
+        public static IList<string> TranslateFile(IList<string> inputFileLines)
+        {
+            logger.Trace($"Translating file of {inputFileLines.Count} lines");
 
-			inputFileLines = RemoveComments(inputFileLines);
-			var translatedLines = new List<string>(inputFileLines.Count);
+            inputFileLines = RemoveComments(inputFileLines);
+            var translatedLines = new List<string>(inputFileLines.Count);
 
-			foreach (string line in inputFileLines)
-			{
-				string[] tokens = line.SplitInstructionLine();
+            foreach (string line in inputFileLines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) { continue; }
+                
+                string[] tokens = line.SplitInstructionLine();
 
-				if (tokens[0].IsLabelLine())
-				{
-					// this is a label, skip
-					translatedLines.Add(line);
-					continue;
-				}
+                if (tokens[0].IsLabelLine())
+                {
+                    // this is a label, skip
+                    translatedLines.Add(line);
+                    continue;
+                }
 
-				var lineBuilder = new StringBuilder();
-				int i = tokens.Length - 1;
-				while (!tokens[i].IsSizeOperand() && !InstructionTable.TryLookup(tokens[i], out _))
-				{
-					string translatedOperand = TranslateOperand(tokens[i]);
-					lineBuilder.Insert(0, " " + translatedOperand);
+                var lineBuilder = new StringBuilder();
+                int i = tokens.Length - 1;
+                while (!tokens[i].IsSizeOperand() && !InstructionTable.TryLookup(tokens[i], out _))
+                {
+                    string translatedOperand = TranslateOperand(tokens[i]);
+                    lineBuilder.Insert(0, " " + translatedOperand);
 
-					i--;
-				}
+                    i--;
+                }
 
-				while (i >= 0) { lineBuilder.Insert(0, " " + tokens[i]); i--; }
-				translatedLines.Add(lineBuilder.ToString().TrimStart());
-			}
+                while (i >= 0) { lineBuilder.Insert(0, " " + tokens[i]); i--; }
+                translatedLines.Add(lineBuilder.ToString().TrimStart());
+            }
 
-			translatedLines = (List<string>)TranslateFloatingPointLiterals(translatedLines);
-			translatedLines = (List<string>)BuildStringTableFromProgram(translatedLines);
+            translatedLines = (List<string>)TranslateFloatingPointLiterals(translatedLines);
+            translatedLines = (List<string>)BuildStringTableFromProgram(translatedLines);
 
-			return translatedLines;
-		}
+            return translatedLines;
+        }
 
-		private static IList<string> RemoveComments(IEnumerable<string> lines)
-		{
-			var linesWithoutComments = new List<string>();
+        private static IList<string> RemoveComments(IEnumerable<string> lines)
+        {
+            var linesWithoutComments = new List<string>();
 
-			foreach (string line in lines)
-			{
-				if (line.StartsWith("#")) { continue; }
-				else if (line.Contains("#"))
-				{
-					int sharpIndex = line.IndexOf('#');
-					string lineWithoutComment = line.Substring(0, sharpIndex).Trim();
-					linesWithoutComments.Add(lineWithoutComment);
-				}
-				else { linesWithoutComments.Add(line); }
-			}
+            foreach (string line in lines)
+            {
+                if (line.StartsWith("#")) { linesWithoutComments.Add(""); }
+                else if (line.Contains("#"))
+                {
+                    int sharpIndex = line.IndexOf('#');
+                    string lineWithoutComment = line.Substring(0, sharpIndex).Trim();
+                    linesWithoutComments.Add(lineWithoutComment);
+                }
+                else { linesWithoutComments.Add(line); }
+            }
 
-			return linesWithoutComments;
-		}
+            return linesWithoutComments;
+        }
 
-		private static string TranslateOperand(string operand)
-		{
-			if (IsRegisterWithHexadecimalOffset(operand))
-			{
-				operand = TranslateRegisterWithHexadecimalOffset(operand);
-			}
-			else if (IsMemoryAddress(operand))
-			{
-				operand = TranslateMemoryAddress(operand);
-			}
-			else if (IsHexadecimalNumericLiteral(operand))
-			{
-				operand = TranslateHexadecimalNumericLiteral(operand);
-			}
-			return operand;
-		}
+        private static string TranslateOperand(string operand)
+        {
+            if (IsRegisterWithHexadecimalOffset(operand))
+            {
+                operand = TranslateRegisterWithHexadecimalOffset(operand);
+            }
+            else if (IsMemoryAddress(operand))
+            {
+                operand = TranslateMemoryAddress(operand);
+            }
+            else if (IsHexadecimalNumericLiteral(operand))
+            {
+                operand = TranslateHexadecimalNumericLiteral(operand);
+            }
+            return operand;
+        }
 
-		private static bool IsRegisterWithHexadecimalOffset(string operand) =>
-			operand.EntireStringMatchesRegex(RegisterWithHexadecimalOffsetRegex);
+        private static bool IsRegisterWithHexadecimalOffset(string operand) =>
+            operand.EntireStringMatchesRegex(RegisterWithHexadecimalOffsetRegex);
 
-		private static string TranslateRegisterWithHexadecimalOffset(string operand)
-		{
-			char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
-			string[] operandParts = operand.Split(offsetSignChar);
+        private static string TranslateRegisterWithHexadecimalOffset(string operand)
+        {
+            char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
+            string[] operandParts = operand.Split(offsetSignChar);
 
-			long offset = (long)operandParts[1].Substring(2).ParseAddress();
-			if (offsetSignChar == '-') { offset = -offset; }
-			if (offset < int.MinValue || offset > int.MaxValue)
-			{
-				throw new TranslationException($"A register offset must be in the range of +/-2.1 billion. The offset received was {offset}.");
-			}
+            long offset = (long)operandParts[1].Substring(2).ParseAddress();
+            if (offsetSignChar == '-') { offset = -offset; }
+            if (offset < int.MinValue || offset > int.MaxValue)
+            {
+                throw new TranslationException($"A register offset must be in the range of +/-2.1 billion. The offset received was {offset}.");
+            }
 
-			return operandParts[0] + ((offsetSignChar == '+') ? "+" : "") + offset.ToString();
-		}
+            return operandParts[0] + ((offsetSignChar == '+') ? "+" : "") + offset.ToString();
+        }
 
-		private static bool IsMemoryAddress(string operand) =>
-			operand.EntireStringMatchesRegex(MemoryAddressRegex);
+        private static bool IsMemoryAddress(string operand) =>
+            operand.EntireStringMatchesRegex(MemoryAddressRegex);
 
-		private static string TranslateMemoryAddress(string operand)
-		{
-			operand = operand.ToLowerInvariant();
-			string[] operandParts = operand.Split('x');
+        private static string TranslateMemoryAddress(string operand)
+        {
+            operand = operand.ToLowerInvariant();
+            string[] operandParts = operand.Split('x');
 
-			string addressPart = operandParts[1].PadLeft(16, '0');
-			return "0x" + addressPart;
-		}
+            string addressPart = operandParts[1].PadLeft(16, '0');
+            return "0x" + addressPart;
+        }
 
-		private static bool IsHexadecimalNumericLiteral(string operand) =>
-			operand.EntireStringMatchesRegex(HexadecimalNumberRegex);
+        private static bool IsHexadecimalNumericLiteral(string operand) =>
+            operand.EntireStringMatchesRegex(HexadecimalNumberRegex);
 
-		private static string TranslateHexadecimalNumericLiteral(string operand)
-		{
-			string numberString = operand.Substring(2);
-			ulong number = 0;
+        private static string TranslateHexadecimalNumericLiteral(string operand)
+        {
+            string numberString = operand.Substring(2);
+            ulong number = 0;
 
-			if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out number))
-			{
-				throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
-			}
+            if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out number))
+            {
+                throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
+            }
 
-			return number.ToString();
-		}
+            return number.ToString();
+        }
 
-		private static bool IsFloatingPointLiteral(string operand)
-			=> operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
+        private static bool IsFloatingPointLiteral(string operand)
+            => operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
 
-		private static IList<string> TranslateFloatingPointLiterals(IList<string> lines)
-		{
-			List<string> translatedLines = new List<string>(lines.Count);
+        private static IList<string> TranslateFloatingPointLiterals(IList<string> lines)
+        {
+            List<string> translatedLines = new List<string>(lines.Count);
 
-			foreach (string line in lines)
-			{
-				if (line.IsLabelLine() || line.ContainsStringLiteral() || line.IsOperandlessInstruction())
-				{ translatedLines.Add(line); continue; }
+            foreach (string line in lines)
+            {
+                if (line.IsLabelLine() || line.ContainsStringLiteral() || line.IsOperandlessInstruction())
+                { translatedLines.Add(line); continue; }
 
-				string[] tokens = line.SplitInstructionLine();
+                string[] tokens = line.SplitInstructionLine();
 
-				bool sizeTokenOriginallyPresent = false;
-				string sizeToken = null;
-				if (tokens[1].IsSizeOperand())
-				{
-					sizeToken = tokens[1].ToLowerInvariant();
-					sizeTokenOriginallyPresent = true;
-				}
+                bool sizeTokenOriginallyPresent = false;
+                string sizeToken = null;
+                if (tokens[1].IsSizeOperand())
+                {
+                    sizeToken = tokens[1].ToLowerInvariant();
+                    sizeTokenOriginallyPresent = true;
+                }
 
-				for (int i = (sizeToken != null) ? 2 : 1; i < tokens.Length; i++)
-				{
-					if (IsFloatingPointLiteral(tokens[i]))
-					{
-						string[] operandParts = tokens[i].ToLowerInvariant().Split('(');
-						string literalText = operandParts[1].Substring(0, operandParts[1].Length - 1);
-						
-						if (operandParts[0] == "single")
-						{
-							tokens[i] = FloatToUIntBitwiseString(literalText);
-						}
-						else if (operandParts[0] == "double")
-						{
+                for (int i = (sizeToken != null) ? 2 : 1; i < tokens.Length; i++)
+                {
+                    if (IsFloatingPointLiteral(tokens[i]))
+                    {
+                        string[] operandParts = tokens[i].ToLowerInvariant().Split('(');
+                        string literalText = operandParts[1].Substring(0, operandParts[1].Length - 1);
+                        
+                        if (operandParts[0] == "single")
+                        {
+                            tokens[i] = FloatToUIntBitwiseString(literalText);
+                        }
+                        else if (operandParts[0] == "double")
+                        {
 
-							tokens[i] = DoubleToULongBitwiseString(literalText);
-						}
+                            tokens[i] = DoubleToULongBitwiseString(literalText);
+                        }
 
-						if (sizeToken != null)
-						{
-							if (operandParts[0] == "single" && sizeToken != "dword") { throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD."); }
-							else if (operandParts[0] == "double" && sizeToken != "qword") { throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD."); }
-						}
-						else
-						{
-							sizeToken = (operandParts[0] == "single") ? "DWORD" : "QWORD";
-						}
-					}
-				}
+                        if (sizeToken != null)
+                        {
+                            if (operandParts[0] == "single" && sizeToken != "dword") { throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD."); }
+                            else if (operandParts[0] == "double" && sizeToken != "qword") { throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD."); }
+                        }
+                        else
+                        {
+                            sizeToken = (operandParts[0] == "single") ? "DWORD" : "QWORD";
+                        }
+                    }
+                }
 
-				string resultLine = tokens[0] + " ";
-				resultLine += sizeToken?.ToUpperInvariant() + " ";
-				resultLine += string.Join(" ", (sizeTokenOriginallyPresent) ? tokens.Skip(2) : tokens.Skip(1));
-				translatedLines.Add(resultLine);
-			}
-			return translatedLines;
-		}
+                string resultLine = tokens[0] + " ";
+                resultLine += sizeToken?.ToUpperInvariant() + " ";
+                resultLine += string.Join(" ", (sizeTokenOriginallyPresent) ? tokens.Skip(2) : tokens.Skip(1));
+                translatedLines.Add(resultLine);
+            }
+            return translatedLines;
+        }
 
-		private static string FloatToUIntBitwiseString(string floatLiteral)
-		{
-			float literal = 0f;
-			if (!float.TryParse(floatLiteral, out literal))
-			{
-				throw new TranslationException($"The floating point literal {floatLiteral} is not valid.");
-			}
+        private static string FloatToUIntBitwiseString(string floatLiteral)
+        {
+            float literal = 0f;
+            if (!float.TryParse(floatLiteral, out literal))
+            {
+                throw new TranslationException($"The floating point literal {floatLiteral} is not valid.");
+            }
 
-			uint literalBits = (uint)(BitConverter.ToInt32(BitConverter.GetBytes(literal), 0));
-			return literalBits.ToString();
-		}
+            uint literalBits = (uint)(BitConverter.ToInt32(BitConverter.GetBytes(literal), 0));
+            return literalBits.ToString();
+        }
 
-		private static string DoubleToULongBitwiseString(string doubleLiteral)
-		{
-			double literal = 0d;
-			if (!double.TryParse(doubleLiteral, out literal))
-			{
-				throw new TranslationException($"The floating point literal {doubleLiteral} is not valid.");
-			}
+        private static string DoubleToULongBitwiseString(string doubleLiteral)
+        {
+            double literal = 0d;
+            if (!double.TryParse(doubleLiteral, out literal))
+            {
+                throw new TranslationException($"The floating point literal {doubleLiteral} is not valid.");
+            }
 
-			ulong literalBits = (ulong)BitConverter.DoubleToInt64Bits(literal);
-			return literalBits.ToString();
-		}
+            ulong literalBits = (ulong)BitConverter.DoubleToInt64Bits(literal);
+            return literalBits.ToString();
+        }
 
-		private static IList<string> BuildStringTableFromProgram(IList<string> lines)
-		{
-			List<string> stringsTable = new List<string>();
-			List<int> linesWithLiterals = new List<int>();
+        private static IList<string> BuildStringTableFromProgram(IList<string> lines)
+        {
+            List<string> stringsTable = new List<string>();
+            List<int> linesWithLiterals = new List<int>();
 
-			for (int i = 0; i < lines.Count; i++)
-			{
-				string line = lines[i];
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i];
 
-				List<int> ignoredQuoteIndices = new List<int>();
-				List<int> quoteIndices = new List<int>();
+                List<int> ignoredQuoteIndices = new List<int>();
+                List<int> quoteIndices = new List<int>();
 
-				for (int j = 0; j < line.Length; j++)
-				{
-					if (line[j] == '\"')
-					{
-						if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
-						else if (line[j - 1] == '\\') { ignoredQuoteIndices.Add(j); }
-						else { quoteIndices.Add(j); }
-					}
-				}
+                for (int j = 0; j < line.Length; j++)
+                {
+                    if (line[j] == '\"')
+                    {
+                        if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
+                        else if (line[j - 1] == '\\') { ignoredQuoteIndices.Add(j); }
+                        else { quoteIndices.Add(j); }
+                    }
+                }
 
-				if (!quoteIndices.Any()) { continue; } else { linesWithLiterals.Add(i); }
-				if (quoteIndices.Count % 2 != 0) { throw new TranslationException($"Some string literals are not properly terminated.\r\n\t{line}"); }
+                if (!quoteIndices.Any()) { continue; } else { linesWithLiterals.Add(i); }
+                if (quoteIndices.Count % 2 != 0) { throw new TranslationException($"Some string literals are not properly terminated.\r\n\t{line}"); }
 
-				for (int quoteIndex = 0; quoteIndex < quoteIndices.Count; quoteIndex += 2)
-				{
-					int firstQuoteIndex = quoteIndices[quoteIndex];
-					int secondQuoteIndex = quoteIndices[quoteIndex + 1];
-					int literalLength = secondQuoteIndex - firstQuoteIndex;
+                for (int quoteIndex = 0; quoteIndex < quoteIndices.Count; quoteIndex += 2)
+                {
+                    int firstQuoteIndex = quoteIndices[quoteIndex];
+                    int secondQuoteIndex = quoteIndices[quoteIndex + 1];
+                    int literalLength = secondQuoteIndex - firstQuoteIndex;
 
-					string literal = line.Substring(firstQuoteIndex, literalLength + 1);
-					if (!stringsTable.Contains(literal))
-					{
-						stringsTable.Add(literal);
-					}
-				}
-			}
+                    string literal = line.Substring(firstQuoteIndex, literalLength + 1);
+                    if (!stringsTable.Contains(literal))
+                    {
+                        stringsTable.Add(literal);
+                    }
+                }
+            }
 
-			foreach (var lineIndex in linesWithLiterals)
-			{
-				for (int i = 0; i < stringsTable.Count; i++)
-				{
-					lines[lineIndex] = lines[lineIndex].Replace(stringsTable[i], "str:" + i.ToString());
-				}
+            foreach (var lineIndex in linesWithLiterals)
+            {
+                for (int i = 0; i < stringsTable.Count; i++)
+                {
+                    lines[lineIndex] = lines[lineIndex].Replace(stringsTable[i], "str:" + i.ToString());
+                }
 
-				string[] tokens = lines[lineIndex].SplitInstructionLine();
-				if (tokens[1].ToLowerInvariant() != "qword" && tokens[0] != "hwcall")
-				{
-					lines[lineIndex] = tokens[0] + " "
-						+ "QWORD " + string.Join(" ", tokens.Skip(1));
-				}
-			}
+                string[] tokens = lines[lineIndex].SplitInstructionLine();
+                if (tokens[1].ToLowerInvariant() != "qword" && tokens[0] != "hwcall")
+                {
+                    lines[lineIndex] = tokens[0] + " "
+                        + "QWORD " + string.Join(" ", tokens.Skip(1));
+                }
+            }
 
 
-			return lines.Concat(BuildStringsTable(stringsTable)).ToList();
-		}
+            return lines.Concat(BuildStringsTable(stringsTable)).ToList();
+        }
 
-		private static IEnumerable<string> BuildStringsTable(IEnumerable<string> stringsTable)
-		{
-			List<string> stringsTableLines = new List<string> {"strings:"};
+        private static IEnumerable<string> BuildStringsTable(IEnumerable<string> stringsTable)
+        {
+            List<string> stringsTableLines = new List<string> {"strings:"};
 
-			stringsTableLines.AddRange(stringsTable.Select((t, i) => i.ToString() + ": " + t));
+            stringsTableLines.AddRange(stringsTable.Select((t, i) => i.ToString() + ": " + t));
 
-			return stringsTableLines;
-		}
-	}
+            return stringsTableLines;
+        }
+    }
 }

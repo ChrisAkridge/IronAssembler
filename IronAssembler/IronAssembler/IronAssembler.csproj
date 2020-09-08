@@ -81,6 +81,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy IronAssembler.dll C:\Users\Chris\Documents\GitHub\IronArc\IronArc\IronArcHost\bin\Debug</PostBuildEvent>
+    <PostBuildEvent>copy IronAssembler.dll D:\Documents\GitHub\IronArc\IronArc\IronArcHost\bin\x86\Debug</PostBuildEvent>
   </PropertyGroup>
 </Project>
