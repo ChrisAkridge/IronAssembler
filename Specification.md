@@ -167,7 +167,7 @@ IronAssembler may assemble from one file containing assembly instructions. This 
     One of { \r \n \t \0 \" \\ }
 ```
 
-All instructions, labels, and string table literals must be on one line. There can be arbitrary amounts of whitespace inside of an between lines.
+All instructions, labels, and string table literals must be on one line. There can be arbitrary amounts of whitespace inside of and between lines.
 
 ## Stages of Assembling
 
@@ -200,7 +200,7 @@ class AssembledInstruction
 }
 ```
 
-Each `AssembledInstruction` maintains a list of zero to three references to other labels that are resolved in the Linking stage. The bytes that will store the addresses of the labels, if present, have been initialized to `0xCCCCCCCCCCCCCCCC`, `0xDDDDDDDDDDDDDDDD`, and `0xEEEEEEEEEEEEEEEE`, respectively.
+Each `AssembledInstruction` maintains a list of zero to three references to other labels or string table indices that are resolved in the Linking stage. The bytes that will store the addresses of the labels, if present, have been initialized to `0xCCCCCCCCCCCCCCCC`, `0xDDDDDDDDDDDDDDDD`, and `0xEEEEEEEEEEEEEEEE`, for labels, or `0xAAAAAAAAxxxxxxxx` for string table indices, where `xxxxxxxx` is the index of the string to reference.
 
 AssembledInstructions are stored within AssembledLabels.
 
@@ -215,7 +215,7 @@ class AssembledLabel
 ```
 
 ### Stage 4: Linking
-The assembled labels must then be linked. First, a running sum of all the code sizes of each label is tallied in the order the labels were defined in the input file, and at each step of the sum, the `Address` property of the current assembled label has the sum assigned to it. Next, all assembled instructions are enumerated, in the order that the labels were defined in the input file and in the order they were defined in the label. Each assembled instruction will have the placeholder values for any label references replaced with the actual address of the label.
+The assembled labels must then be linked. First, a running sum of all the code sizes of each label is tallied in the order the labels were defined in the input file, and at each step of the sum, the `Address` property of the current assembled label has the sum assigned to it. Then, a list of string addresses are built by starting from the address of the last label plus its size. Next, all assembled instructions are enumerated, in the order that the labels were defined in the input file and in the order they were defined in the label. Each assembled instruction will have the placeholder values for any label references replaced with the actual address of the label. String table indices are replaced with pointers to the string being indexed.
 
 ### Stage 5: Concatenation
 Finally, all instructions are concatenated into one large byte array and written to disk.
