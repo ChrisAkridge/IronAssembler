@@ -12,26 +12,32 @@ namespace IronAssembler
     internal static class Linker
     {
         public const uint MagicNumber = 0x45584549; // "IEXE"
-        public const uint SpecificationVersion = 0x00010002;
-        public const uint AssemblerVersion = 0x00010002;
-        public const ulong HeaderSize = 28UL;
+        public const uint SpecificationVersion = 0x00020000;
+        public const uint AssemblerVersion = 0x00020000;
+        public const ulong HeaderSize = 20UL;
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         internal static byte[] LinkFile(AssembledFile file, ParsedStringTable table)
         {
-            IDictionary<string, ulong> blockAddresses = GetBlockAddresses(file.Blocks, file.SizeOfGlobalVariableBlock);
-            IList<AssembledBlock> rewrittenBlocks = RewritePlaceholderAddresses(file.Blocks, blockAddresses);
+            IDictionary<string, ulong> blockAddresses = GetBlockAddresses(file.Blocks, file.SizeOfGlobalVariableBlock,
+                out ulong allBlocksSize);
+            
+            var stringsTableAddress = HeaderSize + (ulong)file.SizeOfGlobalVariableBlock + allBlocksSize;
+            var stringAddresses =
+                GetStringAddresses(table, stringsTableAddress);
+            IList<AssembledBlock> rewrittenBlocks = RewritePlaceholderAddresses(file.Blocks, blockAddresses, stringAddresses);
             byte[] blockBytes = EmitBlocks(rewrittenBlocks);
-            byte[] header = EmitHeader((ulong)blockBytes.Length, file.SizeOfGlobalVariableBlock);
+            byte[] header = EmitHeader(file.SizeOfGlobalVariableBlock);
             var globals = new byte[file.SizeOfGlobalVariableBlock];
-            byte[] stringsTable = AssembleStringsTable(table, (ulong)blockBytes.Length + HeaderSize);
+
+            byte[] stringsTable = AssembleStringsTable(table, stringsTableAddress);
 
             return header.Concat(globals).Concat(blockBytes.Concat(stringsTable)).ToArray();
         }
 
         private static IDictionary<string, ulong> GetBlockAddresses(IReadOnlyList<AssembledBlock> blocks,
-            int sizeOfGlobals)
+            int sizeOfGlobals, out ulong allBlocksSize)
         {
             var addresses = new Dictionary<string, ulong>(blocks.Count);
 
@@ -42,10 +48,30 @@ namespace IronAssembler
                 blockSizeSum += block.BlockSizeInBytes;
             }
 
+            allBlocksSize = blockSizeSum;
             return addresses;
         }
 
-        private static IList<AssembledBlock> RewritePlaceholderAddresses(IReadOnlyList<AssembledBlock> blocks, IDictionary<string, ulong> blockAddresses)
+        private static Dictionary<int, ulong> GetStringAddresses(ParsedStringTable stringTable,
+            ulong stringsStartAt)
+        {
+            var addresses = new Dictionary<int, ulong>(stringTable.Strings.Count);
+            ulong currentAddress = stringsStartAt;
+
+            for (var i = 0; i < stringTable.Strings.Count; i++)
+            {
+                var stringEntry = stringTable.Strings[i];
+                int utf8ByteCount = 4 + Encoding.UTF8.GetByteCount(stringEntry);
+                addresses.Add(i, currentAddress + (ulong)utf8ByteCount);
+                currentAddress += (ulong)utf8ByteCount;
+            }
+
+            return addresses;
+        }
+
+        private static IList<AssembledBlock> RewritePlaceholderAddresses(IReadOnlyList<AssembledBlock> blocks,
+            IDictionary<string, ulong> blockAddresses,
+            IDictionary<int, ulong> stringAddresses)
         {
             var rewrittenBlocks = new List<AssembledBlock>(blocks.Count);
 
@@ -55,7 +81,8 @@ namespace IronAssembler
 
                 foreach (var instruction in block.Instructions)
                 {
-                    if (instruction.Operand1Label == null && instruction.Operand2Label == null
+                    if (instruction.Operand1Label == null
+                        && instruction.Operand2Label == null
                         && instruction.Operand3Label == null)
                     {
                         rewrittenInstructions.Add(instruction);
@@ -78,6 +105,28 @@ namespace IronAssembler
                     {
                         RewritePlaceholderAddress(rewrittenBytes, 0xEEEE_EEEE_EEEE_EEEE,
                             blockAddresses[instruction.Operand3Label]);
+                    }
+
+                    if (instruction.Operand1StringIndex >= 0)
+                    {
+                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand1StringIndex;
+                        RewritePlaceholderAddress(rewrittenBytes, placeholder, stringAddresses[instruction.Operand1StringIndex]);
+                    }
+
+                    if (instruction.Operand2StringIndex >= 0)
+                    {
+                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand2StringIndex;
+
+                        RewritePlaceholderAddress(rewrittenBytes, placeholder,
+                            stringAddresses[instruction.Operand2StringIndex]);
+                    }
+
+                    if (instruction.Operand3StringIndex >= 0)
+                    {
+                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand3StringIndex;
+
+                        RewritePlaceholderAddress(rewrittenBytes, placeholder,
+                            stringAddresses[instruction.Operand3StringIndex]);
                     }
 
                     rewrittenInstructions.Add(new AssembledInstruction(rewrittenBytes));
@@ -106,29 +155,8 @@ namespace IronAssembler
         private static byte[] AssembleStringsTable(ParsedStringTable table, ulong stringsTableAddress)
         {
             List<byte[]> utf8Strings = table.Strings.Select(s => Encoding.UTF8.GetBytes(s)).ToList();
-
-            int numberOfStrings = table.Strings.Count;
-            var addresses = new List<ulong>(numberOfStrings);
-
-            ulong sumOfStringSizes = 0UL;
-            foreach (byte[] utf8String in utf8Strings)
-            {
-                addresses.Add(sumOfStringSizes);
-                sumOfStringSizes += (ulong)utf8String.Length + 4UL;
-            }
-
-            var bytes = new List<byte>(addresses.Count * 8 + 4);
-            bytes.WriteIntLittleEndian((uint)numberOfStrings);
-
-            foreach (ulong address in addresses)
-            {
-                ulong stringAddress = address +							  // The address of the string among the strings
-                                      stringsTableAddress +               // The address of the very start of the string table
-                                      4UL +                               // The size of the number of strings
-                                      (ulong)(addresses.Count * 8);       // The sizes of all the pointers
-                bytes.WriteLongLittleEndian(stringAddress);
-            }
-
+            var bytes = new List<byte>();
+            
             foreach (byte[] utf8String in utf8Strings)
             {
                 bytes.WriteIntLittleEndian((uint)utf8String.Length);
@@ -138,14 +166,13 @@ namespace IronAssembler
             return bytes.ToArray();
         }
 
-        private static byte[] EmitHeader(ulong instructionSizeInBytes, int globalsSize)
+        private static byte[] EmitHeader(int globalsSize)
         {
-            var bytes = new List<byte>(28);
+            var bytes = new List<byte>(20);
             bytes.WriteIntLittleEndian(MagicNumber);
             bytes.WriteIntLittleEndian(SpecificationVersion);
             bytes.WriteIntLittleEndian(AssemblerVersion);
             bytes.WriteLongLittleEndian(HeaderSize + (ulong)globalsSize);    // address of the first instruction
-            bytes.WriteLongLittleEndian(HeaderSize + (ulong)globalsSize + instructionSizeInBytes);
             return bytes.ToArray();
         }
 

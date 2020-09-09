@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace IronAssembler.Data
 {
-	public sealed class ParsedStringTable
-	{
-		private List<string> strings;
+    public sealed class ParsedStringTable
+    {
+        private List<string> strings;
 
-		public IReadOnlyList<string> Strings => strings.AsReadOnly();
+        public IReadOnlyList<string> Strings => strings.AsReadOnly();
 
-		public ParsedStringTable(IEnumerable<string> strings)
-		{
-			this.strings = strings.ToList();
-		}
-	}
+        public ParsedStringTable(IEnumerable<string> strings)
+        {
+            this.strings = strings.ToList();
+        }
+    }
 }

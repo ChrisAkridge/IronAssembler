@@ -64,7 +64,11 @@ namespace IronAssembler
                     i--;
                 }
 
-                while (i >= 0) { lineBuilder.Insert(0, " " + tokens[i]); i--; }
+                while (i >= 0)
+                {
+                    lineBuilder.Insert(0, " " + tokens[i]);
+                    i--;
+                }
                 translatedLines.Add(lineBuilder.ToString().TrimStart());
             }
 
@@ -146,9 +150,8 @@ namespace IronAssembler
         private static string TranslateHexadecimalNumericLiteral(string operand)
         {
             string numberString = operand.Substring(2);
-            ulong number = 0;
 
-            if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out number))
+            if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var number))
             {
                 throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
             }
@@ -156,8 +159,7 @@ namespace IronAssembler
             return number.ToString();
         }
 
-        private static bool IsFloatingPointLiteral(string operand)
-            => operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
+        private static bool IsFloatingPointLiteral(string operand) => operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
 
         private static IList<string> TranslateFloatingPointLiterals(IList<string> lines)
         {
@@ -191,7 +193,6 @@ namespace IronAssembler
                         }
                         else if (operandParts[0] == "double")
                         {
-
                             tokens[i] = DoubleToULongBitwiseString(literalText);
                         }
 
@@ -217,8 +218,7 @@ namespace IronAssembler
 
         private static string FloatToUIntBitwiseString(string floatLiteral)
         {
-            float literal = 0f;
-            if (!float.TryParse(floatLiteral, out literal))
+            if (!float.TryParse(floatLiteral, out var literal))
             {
                 throw new TranslationException($"The floating point literal {floatLiteral} is not valid.");
             }
@@ -229,8 +229,7 @@ namespace IronAssembler
 
         private static string DoubleToULongBitwiseString(string doubleLiteral)
         {
-            double literal = 0d;
-            if (!double.TryParse(doubleLiteral, out literal))
+            if (!double.TryParse(doubleLiteral, out var literal))
             {
                 throw new TranslationException($"The floating point literal {doubleLiteral} is not valid.");
             }
@@ -261,7 +260,9 @@ namespace IronAssembler
                     }
                 }
 
-                if (!quoteIndices.Any()) { continue; } else { linesWithLiterals.Add(i); }
+                if (!quoteIndices.Any()) { continue; }
+                else { linesWithLiterals.Add(i); }
+                
                 if (quoteIndices.Count % 2 != 0) { throw new TranslationException($"Some string literals are not properly terminated.\r\n\t{line}"); }
 
                 for (int quoteIndex = 0; quoteIndex < quoteIndices.Count; quoteIndex += 2)
@@ -288,11 +289,12 @@ namespace IronAssembler
                 string[] tokens = lines[lineIndex].SplitInstructionLine();
                 if (tokens[1].ToLowerInvariant() != "qword" && tokens[0] != "hwcall")
                 {
-                    lines[lineIndex] = tokens[0] + " "
-                        + "QWORD " + string.Join(" ", tokens.Skip(1));
+                    lines[lineIndex] = tokens[0]
+                        + " "
+                        + "QWORD "
+                        + string.Join(" ", tokens.Skip(1));
                 }
             }
-
 
             return lines.Concat(BuildStringsTable(stringsTable)).ToList();
         }

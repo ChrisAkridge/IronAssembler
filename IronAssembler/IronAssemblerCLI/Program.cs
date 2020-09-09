@@ -9,9 +9,9 @@ using IronAssembler;
 
 namespace IronAssemblerCLI
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             var result = Parser.Default.ParseArguments<Options>(args);
 

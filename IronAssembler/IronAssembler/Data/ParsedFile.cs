@@ -6,20 +6,20 @@ using System.Threading.Tasks;
 
 namespace IronAssembler.Data
 {
-	internal sealed class ParsedFile
-	{
-		private List<ParsedBlock> blocks;
+    internal sealed class ParsedFile
+    {
+        private List<ParsedBlock> blocks;
 
-		public IReadOnlyList<ParsedBlock> Blocks => blocks.AsReadOnly();
-		public ParsedStringTable StringTable { get; }
-		public int SizeOfGlobalVariableBlock { get; }
+        public IReadOnlyList<ParsedBlock> Blocks => blocks.AsReadOnly();
+        public ParsedStringTable StringTable { get; }
+        public int SizeOfGlobalVariableBlock { get; }
 
-		public ParsedFile(IEnumerable<ParsedBlock> blocks, ParsedStringTable stringTable,
-			int sizeOfGlobalVariableBlock)
-		{
-			this.blocks = blocks.ToList();
-			StringTable = stringTable;
-			SizeOfGlobalVariableBlock = sizeOfGlobalVariableBlock;
-		}
-	}
+        public ParsedFile(IEnumerable<ParsedBlock> blocks, ParsedStringTable stringTable,
+            int sizeOfGlobalVariableBlock)
+        {
+            this.blocks = blocks.ToList();
+            StringTable = stringTable;
+            SizeOfGlobalVariableBlock = sizeOfGlobalVariableBlock;
+        }
+    }
 }

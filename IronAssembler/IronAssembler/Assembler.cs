@@ -91,11 +91,12 @@ namespace IronAssembler
             flagsByte |= (byte)((int)instruction.Size << 6);
 
             string[] operandLabels = new string[3];
+            int[] stringTableIndices = new int[3];
             if (instruction.Operand1Text != null)
             {
                 var type = GetOperandType(instruction.Operand1Text);
                 AssembleOperand(bytes, instruction.Operand1Text, type, instruction.Size,
-                    0, out operandLabels[0]);
+                    0, out operandLabels[0], out stringTableIndices[0]);
 
                 flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 4);
             }
@@ -104,7 +105,7 @@ namespace IronAssembler
             {
                 var type = GetOperandType(instruction.Operand2Text);
                 AssembleOperand(bytes, instruction.Operand2Text, type, instruction.Size,
-                    1, out operandLabels[1]);
+                    1, out operandLabels[1], out stringTableIndices[1]);
 
                 flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 2);
             }
@@ -114,7 +115,7 @@ namespace IronAssembler
                 var type = GetOperandType(instruction.Operand3Text);
                 AssembleOperand(bytes, instruction.Operand3Text, type, 
                     (instruction.Mnemonic != "movln") ? instruction.Size : OperandSize.DWord,
-                    2,  out operandLabels[2]);
+                    2, out operandLabels[2], out stringTableIndices[2]);
 
                 flagsByte |= GetFlagsBitsFromOperandType(type);
             }
@@ -133,7 +134,9 @@ namespace IronAssembler
                 bytes.Insert(2, flagsByte);
             }
 
-            return new AssembledInstruction(bytes, operandLabels[0], operandLabels[1], operandLabels[2]);
+            return new AssembledInstruction(bytes,
+                operandLabels[0], operandLabels[1], operandLabels[2],
+                stringTableIndices[0], stringTableIndices[1], stringTableIndices[2]);
         }
 
         #region Instruction Assembler Helpers
@@ -199,9 +202,10 @@ namespace IronAssembler
         }
 
         private static void AssembleOperand(IList<byte> bytes, string operand, OperandType type, 
-            OperandSize size, int operandIndex, out string labelName)
+            OperandSize size, int operandIndex, out string labelName, out int stringTableIndex)
         {
             labelName = null;
+            stringTableIndex = -1;
             switch (type)
             {
                 case OperandType.MemoryAddress:
@@ -224,6 +228,7 @@ namespace IronAssembler
                     break;
                 case OperandType.StringTableEntry:
                     AssembleStringTableEntry(bytes, operand);
+                    stringTableIndex = int.Parse(operand.Split(':')[1]);
                     break;
                 case OperandType.Label:
                     AssembleLabel(bytes, operandIndex);
@@ -325,13 +330,12 @@ namespace IronAssembler
 
         private static void AssembleStringTableEntry(IList<byte> bytes, string operand)
         {
-            uint tableIndex;
-            if (!uint.TryParse(operand.Split(':')[1], out tableIndex))
+            if (!uint.TryParse(operand.Split(':')[1], out var tableIndex))
             {
                 throw new AssemblerException($"{operand} is not a valid index into the string table.");
             }
 
-            bytes.WriteIntLittleEndian(tableIndex);
+            bytes.WriteLongLittleEndian(0xAAAAAAAAUL | tableIndex);
         }
 
         private static void AssembleLabel(IList<byte> bytes, int operandIndex)
