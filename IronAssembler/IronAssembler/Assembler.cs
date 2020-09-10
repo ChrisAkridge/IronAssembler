@@ -91,7 +91,7 @@ namespace IronAssembler
             flagsByte |= (byte)((int)instruction.Size << 6);
 
             string[] operandLabels = new string[3];
-            int[] stringTableIndices = new int[3];
+            int[] stringTableIndices = { -1, -1, -1 };
             if (instruction.Operand1Text != null)
             {
                 var type = GetOperandType(instruction.Operand1Text);
@@ -187,6 +187,7 @@ namespace IronAssembler
                 case OperandType.MemoryAddress:
                 case OperandType.MemoryPointerAddress:
                 case OperandType.Label:
+                case OperandType.StringTableEntry:
                     return 0;
                 case OperandType.Register:
                 case OperandType.RegisterWithPointer:
@@ -194,8 +195,6 @@ namespace IronAssembler
                     return 1;
                 case OperandType.NumericLiteral:
                     return 2;
-                case OperandType.StringTableEntry:
-                    return 3;
                 default:
                     throw new AssemblerException("The method was provided with an invalid operand type.");
             }
@@ -333,7 +332,7 @@ namespace IronAssembler
                 throw new AssemblerException($"{operand} is not a valid index into the string table.");
             }
 
-            bytes.WriteLongLittleEndian(0xAAAAAAAAUL | tableIndex);
+            bytes.WriteLongLittleEndian(0xAAAAAAAA00000000UL | tableIndex);
         }
 
         private static void AssembleLabel(IList<byte> bytes, int operandIndex)

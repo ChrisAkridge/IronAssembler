@@ -21,9 +21,9 @@ namespace IronAssembler
         internal static byte[] LinkFile(AssembledFile file, ParsedStringTable table)
         {
             var blockAddresses = GetBlockAddresses(file.Blocks, file.SizeOfGlobalVariableBlock,
-                out ulong allBlocksSize);
+                out ulong blocksGlobalsHeaderSize);
             
-            var stringsTableAddress = HeaderSize + (ulong)file.SizeOfGlobalVariableBlock + allBlocksSize;
+            var stringsTableAddress = blocksGlobalsHeaderSize;
             var stringAddresses =
                 GetStringAddresses(table, stringsTableAddress);
             var rewrittenBlocks = RewritePlaceholderAddresses(file.Blocks, blockAddresses, stringAddresses);
@@ -37,7 +37,7 @@ namespace IronAssembler
         }
 
         private static IDictionary<string, ulong> GetBlockAddresses(IReadOnlyList<AssembledBlock> blocks,
-            int sizeOfGlobals, out ulong allBlocksSize)
+            int sizeOfGlobals, out ulong blocksGlobalsHeaderSize)
         {
             var addresses = new Dictionary<string, ulong>(blocks.Count);
 
@@ -48,7 +48,7 @@ namespace IronAssembler
                 blockSizeSum += block.BlockSizeInBytes;
             }
 
-            allBlocksSize = blockSizeSum;
+            blocksGlobalsHeaderSize = blockSizeSum;
             return addresses;
         }
 
@@ -83,7 +83,10 @@ namespace IronAssembler
                 {
                     if (instruction.Operand1Label == null
                         && instruction.Operand2Label == null
-                        && instruction.Operand3Label == null)
+                        && instruction.Operand3Label == null
+                        && instruction.Operand1StringIndex < 0
+                        && instruction.Operand2StringIndex < 0
+                        && instruction.Operand3StringIndex < 0)
                     {
                         rewrittenInstructions.Add(instruction);
                         continue;
@@ -109,13 +112,13 @@ namespace IronAssembler
 
                     if (instruction.Operand1StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand1StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand1StringIndex;
                         RewritePlaceholderAddress(rewrittenBytes, placeholder, stringAddresses[instruction.Operand1StringIndex]);
                     }
 
                     if (instruction.Operand2StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand2StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand2StringIndex;
 
                         RewritePlaceholderAddress(rewrittenBytes, placeholder,
                             stringAddresses[instruction.Operand2StringIndex]);
@@ -123,7 +126,7 @@ namespace IronAssembler
 
                     if (instruction.Operand3StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAAUL | (ulong)instruction.Operand3StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand3StringIndex;
 
                         RewritePlaceholderAddress(rewrittenBytes, placeholder,
                             stringAddresses[instruction.Operand3StringIndex]);
