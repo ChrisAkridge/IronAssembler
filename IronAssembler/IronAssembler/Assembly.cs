@@ -10,18 +10,15 @@ namespace IronAssembler
 {
     public static class Assembly
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        static Assembly()
-        {
-            LogConfigurer.ConfigureLog();
-        }
+        static Assembly() => LogConfigurer.ConfigureLog();
 
         public static byte[] AssembleProgram(string program, bool isDirectAssemblyFile)
         {
             logger.Info("Start I/O Stage");
 
-            IList<string> programLines =
+            var programLines =
                 !isDirectAssemblyFile ? Translator.TranslateFile(program) : IO.SplitInputByLine(program);
 
             logger.Info("End I/O Stage");

@@ -17,10 +17,10 @@ namespace IronAssembler
         internal static ParsedFile ParseFile(IList<string> programLines)
         {
             logger.Trace($"Parsing file of {programLines.Count} line(s)");
-            Dictionary<string, int> labelLocations = GetLabelLocations(programLines, out int stringsLabelLocation,
+            var labelLocations = GetLabelLocations(programLines, out int stringsLabelLocation,
                 out int sizeOfGlobalVariableBlock);
-            IEnumerable<ParsedBlock> blocks = ParseBlocks(programLines, labelLocations);
-            ParsedStringTable stringsTable = ParseStringsTable(programLines, stringsLabelLocation);
+            var blocks = ParseBlocks(programLines, labelLocations);
+            var stringsTable = ParseStringsTable(programLines, stringsLabelLocation);
 
             return new ParsedFile(blocks, stringsTable, sizeOfGlobalVariableBlock);
         }
@@ -41,34 +41,33 @@ namespace IronAssembler
             {
                 string line = lines[i];
 
-                if (IsLabelLine(line))
+                if (!IsLabelLine(line)) { continue; }
+
+                if (line.ToLowerInvariant().StartsWith("globals:", StringComparison.Ordinal))
                 {
-                    if (line.ToLowerInvariant().StartsWith("globals:", StringComparison.Ordinal))
+                    if (i != 0)
                     {
-                        if (i != 0)
-                        {
-                            throw new ParsingException("The globals size label must be the first line of the program.", 0);
-                        }
-                        sizeOfGlobalVariableBlock = int.Parse(line.Split(' ').Last());
-                        continue;
+                        throw new ParsingException("The globals size label must be the first line of the program.", 0);
                     }
-                    if (line.ToLowerInvariant() == "strings:")
+                    sizeOfGlobalVariableBlock = int.Parse(line.Split(' ').Last());
+                    continue;
+                }
+                if (line.ToLowerInvariant() == "strings:")
+                {
+                    if (stringsLabelLineIndex != -1)
                     {
-                        if (stringsLabelLineIndex != -1)
-                        {
-                            throw new ParsingException("The assembly program has multiple strings tables.", i);
-                        }
-                        stringsLabelLineIndex = i;
+                        throw new ParsingException("The assembly program has multiple strings tables.", i);
                     }
-                    else
+                    stringsLabelLineIndex = i;
+                }
+                else
+                {
+                    string labelNameWithoutColon = line.Substring(0, line.Length - 1);
+                    if (labelLocations.ContainsKey(labelNameWithoutColon))
                     {
-                        string labelNameWithoutColon = line.Substring(0, line.Length - 1);
-                        if (labelLocations.ContainsKey(labelNameWithoutColon))
-                        {
-                            throw new ParsingException($"The label {labelNameWithoutColon} is defined multiple times.", i);
-                        }
-                        labelLocations.Add(labelNameWithoutColon, i);
+                        throw new ParsingException($"The label {labelNameWithoutColon} is defined multiple times.", i);
                     }
+                    labelLocations.Add(labelNameWithoutColon, i);
                 }
             }
 
@@ -88,7 +87,7 @@ namespace IronAssembler
             var blocks = new List<ParsedBlock>();
             var currentBlockInstructions = new List<ParsedInstruction>();
 
-            foreach (KeyValuePair<string, int> kvp in labelLocations)
+            foreach (var kvp in labelLocations)
             {
                 logger.Trace($"Parsing block {kvp.Key}");
                 for (int i = kvp.Value + 1; i <= lines.Count; i++)
@@ -151,12 +150,12 @@ namespace IronAssembler
             var parts = instructionLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(s => s.Trim()).ToArray();
 
-            if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out InstructionInfo info))
+            if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out var info))
             {
                 throw new ParsingException($"There is no instruction with the mnemonic {parts[0]}.", lineNumber);
             }
 
-            OperandSize size = OperandSize.Default;
+            var size = OperandSize.Default;
             if (info.NeedsSize)
             {
                 if (parts.Length == 1)
@@ -240,7 +239,7 @@ namespace IronAssembler
             // and end with a :
             // The entire line must match
             const string labelRegex = @"^[_a-zA-Z][_a-zA-Z0-9]*:$";
-            Match match = Regex.Match(line, labelRegex);
+            var match = Regex.Match(line, labelRegex);
 
             return match.Success || line.ToLowerInvariant().StartsWith("globals", StringComparison.Ordinal);
         }
@@ -256,89 +255,90 @@ namespace IronAssembler
             {
                 char current = tableString[i];
 
-                // Scenario 1: this character shouldn't appear without being escaped (' or ")
-                if (current == '\'' || current == '\"')
+                switch (current)
                 {
-                    throw new ParsingException($"An entry in the string table has an illegal {current} character at index {i}.",
-                        lineNumber);
-                }
-                else if (current == '\\')
-                {
-                    if (i == tableString.Length - 1)
-                    {
+                    // Scenario 1: this character shouldn't appear without being escaped (' or ")
+                    case '\'':
+                    case '\"':
+                        throw new ParsingException($"An entry in the string table has an illegal {current} character at index {i}.",
+                            lineNumber);
+                    case '\\' when i == tableString.Length - 1:
                         throw new ParsingException($"An entry in the string table ends in a slash, but no escape sequence was present.",
                             lineNumber);
-                    }
-
-                    char next = tableString[i + 1];
-                    switch (next)
+                    case '\\':
                     {
-                        case '\'':
-                            resultBuilder.Append('\'');
-                            i++;
-                            break;
-                        case '\"':
-                            resultBuilder.Append('\"');
-                            i++;
-                            break;
-                        case '0':
-                            resultBuilder.Append('\0');
-                            i++;
-                            break;
-                        case 'a':
-                            resultBuilder.Append('\a');
-                            i++;
-                            break;
-                        case 'b':
-                            resultBuilder.Append('\b');
-                            i++;
-                            break;
-                        case 'f':
-                            resultBuilder.Append('\f');
-                            i++;
-                            break;
-                        case 'n':
-                            resultBuilder.Append('\n');
-                            i++;
-                            break;
-                        case 'r':
-                            resultBuilder.Append('\r');
-                            i++;
-                            break;
-                        case 't':
-                            resultBuilder.Append('\t');
-                            i++;
-                            break;
-                        case 'v':
-                            resultBuilder.Append('\v');
-                            i++;
-                            break;
-                        case 'u':
-                        case 'U':
-                            int codePointLength = (next == 'u') ? 4 : 8;
-                            if (i + 1 + codePointLength > tableString.Length - 1)
-                            {
-                                throw new ParsingException(
-                                    $"An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.",
-                                    lineNumber);
-                            }
-                            string codePointString = tableString.Substring(i + 2, codePointLength);
-                            if (!int.TryParse(codePointString, NumberStyles.HexNumber,
-                                CultureInfo.CurrentCulture, out int codePoint))
-                            {
-                                throw new ParsingException($"The sequence {codePointString} is not a valid Unicode code point.", lineNumber);
-                            }
+                        char next = tableString[i + 1];
+                        switch (next)
+                        {
+                            case '\'':
+                                resultBuilder.Append('\'');
+                                i++;
+                                break;
+                            case '\"':
+                                resultBuilder.Append('\"');
+                                i++;
+                                break;
+                            case '0':
+                                resultBuilder.Append('\0');
+                                i++;
+                                break;
+                            case 'a':
+                                resultBuilder.Append('\a');
+                                i++;
+                                break;
+                            case 'b':
+                                resultBuilder.Append('\b');
+                                i++;
+                                break;
+                            case 'f':
+                                resultBuilder.Append('\f');
+                                i++;
+                                break;
+                            case 'n':
+                                resultBuilder.Append('\n');
+                                i++;
+                                break;
+                            case 'r':
+                                resultBuilder.Append('\r');
+                                i++;
+                                break;
+                            case 't':
+                                resultBuilder.Append('\t');
+                                i++;
+                                break;
+                            case 'v':
+                                resultBuilder.Append('\v');
+                                i++;
+                                break;
+                            case 'u':
+                            case 'U':
+                                int codePointLength = (next == 'u') ? 4 : 8;
+                                if (i + 1 + codePointLength > tableString.Length - 1)
+                                {
+                                    throw new ParsingException(
+                                        $"An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.",
+                                        lineNumber);
+                                }
+                                string codePointString = tableString.Substring(i + 2, codePointLength);
+                                if (!int.TryParse(codePointString, NumberStyles.HexNumber,
+                                    CultureInfo.CurrentCulture, out int codePoint))
+                                {
+                                    throw new ParsingException($"The sequence {codePointString} is not a valid Unicode code point.", lineNumber);
+                                }
 
-                            resultBuilder.Append(char.ConvertFromUtf32(codePoint));
-                            i += 1 + codePointLength;
-                            break;
-                        default:
-                            throw new ParsingException($"Unrecognized escape sequence \\{next} at index {i}", lineNumber);
+                                resultBuilder.Append(char.ConvertFromUtf32(codePoint));
+                                i += 1 + codePointLength;
+                                break;
+                            default:
+                                throw new ParsingException($"Unrecognized escape sequence \\{next} at index {i}", lineNumber);
+                        }
+
+                        break;
                     }
-                }
-                else
-                {
-                    resultBuilder.Append(current);
+                    default:
+                        resultBuilder.Append(current);
+
+                        break;
                 }
             }
 

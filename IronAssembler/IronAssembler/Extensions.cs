@@ -41,14 +41,14 @@ namespace IronAssembler
         {
             for (int i = 0; i <= bytes.Length - 8; i++)
             {
-                ulong portion = bytes[i] |
-                                ((ulong)bytes[i + 1] << 8) |
-                                ((ulong)bytes[i + 2] << 16) |
-                                ((ulong)bytes[i + 3] << 24) |
-                                ((ulong)bytes[i + 4] << 32) |
-                                ((ulong)bytes[i + 5] << 40) |
-                                ((ulong)bytes[i + 6] << 48) |
-                                ((ulong)bytes[i + 7] << 56);
+                ulong portion = bytes[i]
+                    | ((ulong)bytes[i + 1] << 8)
+                    | ((ulong)bytes[i + 2] << 16)
+                    | ((ulong)bytes[i + 3] << 24)
+                    | ((ulong)bytes[i + 4] << 32)
+                    | ((ulong)bytes[i + 5] << 40)
+                    | ((ulong)bytes[i + 6] << 48)
+                    | ((ulong)bytes[i + 7] << 56);
                 if (portion == sequence) { return i; }
             }
 
@@ -70,7 +70,7 @@ namespace IronAssembler
             return tokens.Length == 1 || (tokens.Length == 2 && tokens[1].IsSizeOperand());
         }
 
-        public static bool IsLabelLine(this string line) => line.EndsWith(":");
+        public static bool IsLabelLine(this string line) => line.EndsWith(":", StringComparison.Ordinal);
         public static bool ContainsStringLiteral(this string line) => line.Contains("\"");
 
         public static bool IsAllASCIILetters(this string s)
@@ -78,15 +78,11 @@ namespace IronAssembler
             return s.All(c => (c >= 65 && c <= 90) || (c >= 97 && c <= 122));
         }
 
-        public static bool EntireStringMatchesRegex(this string s, string regex)
-        {
-            return Regex.Match(s, regex).Value == s;
-        }
+        public static bool EntireStringMatchesRegex(this string s, string regex) => Regex.Match(s, regex).Value == s;
 
         public static ulong ParseAddress(this string s)
         {
-            ulong address;
-            if (!ulong.TryParse(s, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out address))
+            if (!ulong.TryParse(s, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var address))
             {
                 throw new AssemblerException($"The operand {s} is not a valid memory address.");
             }
@@ -96,8 +92,7 @@ namespace IronAssembler
 
         public static byte ParseRegister(this string s)
         {
-            Register register;
-            if (!Enum.TryParse(s, true, out register))
+            if (!Enum.TryParse(s, true, out Register register))
             {
                 throw new AssemblerException($"The register {s} does not exist.");
             }

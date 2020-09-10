@@ -45,7 +45,7 @@ namespace IronAssembler
             {
                 if (string.IsNullOrWhiteSpace(line)) { continue; }
                 
-                string[] tokens = line.SplitInstructionLine();
+                var tokens = line.SplitInstructionLine();
 
                 if (tokens[0].IsLabelLine())
                 {
@@ -84,7 +84,7 @@ namespace IronAssembler
 
             foreach (string line in lines)
             {
-                if (line.StartsWith("#")) { linesWithoutComments.Add(""); }
+                if (line.StartsWith("#", StringComparison.Ordinal)) { linesWithoutComments.Add(""); }
                 else if (line.Contains("#"))
                 {
                     int sharpIndex = line.IndexOf('#');
@@ -120,7 +120,7 @@ namespace IronAssembler
         private static string TranslateRegisterWithHexadecimalOffset(string operand)
         {
             char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
-            string[] operandParts = operand.Split(offsetSignChar);
+            var operandParts = operand.Split(offsetSignChar);
 
             long offset = (long)operandParts[1].Substring(2).ParseAddress();
             if (offsetSignChar == '-') { offset = -offset; }
@@ -138,7 +138,7 @@ namespace IronAssembler
         private static string TranslateMemoryAddress(string operand)
         {
             operand = operand.ToLowerInvariant();
-            string[] operandParts = operand.Split('x');
+            var operandParts = operand.Split('x');
 
             string addressPart = operandParts[1].PadLeft(16, '0');
             return "0x" + addressPart;
@@ -163,14 +163,17 @@ namespace IronAssembler
 
         private static IList<string> TranslateFloatingPointLiterals(IList<string> lines)
         {
-            List<string> translatedLines = new List<string>(lines.Count);
+            var translatedLines = new List<string>(lines.Count);
 
             foreach (string line in lines)
             {
                 if (line.IsLabelLine() || line.ContainsStringLiteral() || line.IsOperandlessInstruction())
-                { translatedLines.Add(line); continue; }
+                {
+                    translatedLines.Add(line);
+                    continue;
+                }
 
-                string[] tokens = line.SplitInstructionLine();
+                var tokens = line.SplitInstructionLine();
 
                 bool sizeTokenOriginallyPresent = false;
                 string sizeToken = null;
@@ -182,29 +185,34 @@ namespace IronAssembler
 
                 for (int i = (sizeToken != null) ? 2 : 1; i < tokens.Length; i++)
                 {
-                    if (IsFloatingPointLiteral(tokens[i]))
-                    {
-                        string[] operandParts = tokens[i].ToLowerInvariant().Split('(');
-                        string literalText = operandParts[1].Substring(0, operandParts[1].Length - 1);
-                        
-                        if (operandParts[0] == "single")
-                        {
-                            tokens[i] = FloatToUIntBitwiseString(literalText);
-                        }
-                        else if (operandParts[0] == "double")
-                        {
-                            tokens[i] = DoubleToULongBitwiseString(literalText);
-                        }
+                    if (!IsFloatingPointLiteral(tokens[i])) { continue; }
 
-                        if (sizeToken != null)
+                    var operandParts = tokens[i].ToLowerInvariant().Split('(');
+                    string literalText = operandParts[1].Substring(0, operandParts[1].Length - 1);
+                        
+                    switch (operandParts[0])
+                    {
+                        case "single":
+                            tokens[i] = FloatToUIntBitwiseString(literalText);
+                            break;
+                        case "double":
+                            tokens[i] = DoubleToULongBitwiseString(literalText);
+                            break;
+                    }
+
+                    if (sizeToken != null)
+                    {
+                        switch (operandParts[0])
                         {
-                            if (operandParts[0] == "single" && sizeToken != "dword") { throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD."); }
-                            else if (operandParts[0] == "double" && sizeToken != "qword") { throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD."); }
+                            case "single" when sizeToken != "dword":
+                                throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD.");
+                            case "double" when sizeToken != "qword":
+                                throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD.");
                         }
-                        else
-                        {
-                            sizeToken = (operandParts[0] == "single") ? "DWORD" : "QWORD";
-                        }
+                    }
+                    else
+                    {
+                        sizeToken = (operandParts[0] == "single") ? "DWORD" : "QWORD";
                     }
                 }
 
@@ -240,24 +248,21 @@ namespace IronAssembler
 
         private static IList<string> BuildStringTableFromProgram(IList<string> lines)
         {
-            List<string> stringsTable = new List<string>();
-            List<int> linesWithLiterals = new List<int>();
+            var stringsTable = new List<string>();
+            var linesWithLiterals = new List<int>();
 
             for (int i = 0; i < lines.Count; i++)
             {
                 string line = lines[i];
 
-                List<int> ignoredQuoteIndices = new List<int>();
-                List<int> quoteIndices = new List<int>();
+                var quoteIndices = new List<int>();
 
                 for (int j = 0; j < line.Length; j++)
                 {
-                    if (line[j] == '\"')
-                    {
-                        if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
-                        else if (line[j - 1] == '\\') { ignoredQuoteIndices.Add(j); }
-                        else { quoteIndices.Add(j); }
-                    }
+                    if (line[j] != '\"') { continue; }
+
+                    if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
+                    else { quoteIndices.Add(j); }
                 }
 
                 if (!quoteIndices.Any()) { continue; }
@@ -286,7 +291,7 @@ namespace IronAssembler
                     lines[lineIndex] = lines[lineIndex].Replace(stringsTable[i], "str:" + i.ToString());
                 }
 
-                string[] tokens = lines[lineIndex].SplitInstructionLine();
+                var tokens = lines[lineIndex].SplitInstructionLine();
                 if (tokens[1].ToLowerInvariant() != "qword" && tokens[0] != "hwcall")
                 {
                     lines[lineIndex] = tokens[0]
@@ -301,7 +306,7 @@ namespace IronAssembler
 
         private static IEnumerable<string> BuildStringsTable(IEnumerable<string> stringsTable)
         {
-            List<string> stringsTableLines = new List<string> {"strings:"};
+            var stringsTableLines = new List<string> {"strings:"};
 
             stringsTableLines.AddRange(stringsTable.Select((t, i) => i.ToString() + ": " + t));
 

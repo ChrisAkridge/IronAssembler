@@ -23,7 +23,7 @@ namespace IronAssemblerCLI
 
                     if (!options.Value.ProduceDirectAssembly)
                     {
-                        byte[] outputFile = Assembly.AssembleProgram(inputFile, isDirectAssemblyFile: options.Value.SkipTranslationPhase);
+                        var outputFile = Assembly.AssembleProgram(inputFile, isDirectAssemblyFile: options.Value.SkipTranslationPhase);
                         File.WriteAllBytes(options.Value.OutputFilePath, outputFile);
                     }
                     else
@@ -33,7 +33,7 @@ namespace IronAssemblerCLI
                         var outputPathWithoutExtension = outputPath.Substring(0, extensionDotIndex);
                         options.Value.OutputFilePath = outputPathWithoutExtension + ".iasm";
 
-                        IList<string> directAssembly = Translator.TranslateFile(inputFile);
+                        var directAssembly = Translator.TranslateFile(inputFile);
                         File.WriteAllLines(options.Value.OutputFilePath, directAssembly);
                     }
 
@@ -42,7 +42,7 @@ namespace IronAssemblerCLI
                 }
                 else
                 {
-                    byte[] inputFile = File.ReadAllBytes(options.Value.InputFilePath);
+                    var inputFile = File.ReadAllBytes(options.Value.InputFilePath);
                     Console.WriteLine($"Loaded file, length {inputFile.Length} byte(s).");
 
                     string disassembled = Disassembler.DisassembleProgram(inputFile, true, true);

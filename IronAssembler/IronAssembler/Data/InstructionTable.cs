@@ -11,17 +11,14 @@ namespace IronAssembler.Data
     /// </summary>
     internal static class InstructionTable
     {
-        private static Dictionary<string, InstructionInfo> instructions;
+        private static readonly Dictionary<string, InstructionInfo> instructions;
 
         /// <summary>
         /// Looks up instruction info by an instruction's mnemonic value.
         /// </summary>
         /// <param name="mnemonic">The mnemonic for the instruction to look up.</param>
         /// <returns>The <see cref="InstructionInfo"/> instance for this instruction.</returns>
-        public static InstructionInfo Lookup(string mnemonic)
-        {
-            return instructions[mnemonic];
-        }
+        public static InstructionInfo Lookup(string mnemonic) => instructions[mnemonic];
 
         /// <summary>
         /// Attempts to look up info for an instruction by an instruction's mnemonic value.
@@ -31,7 +28,11 @@ namespace IronAssembler.Data
         /// <returns>True if the mnemonic names an instruction, false if it doesn't.</returns>
         public static bool TryLookup(string mnemonic, out InstructionInfo info)
         {
-            if (!instructions.ContainsKey(mnemonic)) { info = null; return false; }
+            if (!instructions.ContainsKey(mnemonic))
+            {
+                info = null;
+                return false;
+            }
 
             info = Lookup(mnemonic);
             return true;
@@ -43,8 +44,7 @@ namespace IronAssembler.Data
             return instructionInfo != null;
         }
 
-        static InstructionTable()
-        {
+        static InstructionTable() =>
             instructions = new Dictionary<string, InstructionInfo>
             {
                 // Control Flow Instructions (0x00)
@@ -118,6 +118,5 @@ namespace IronAssembler.Data
                 { "fcmp", new InstructionInfo("Floating Stack Comparison", "fcmp", 0x0285, true, true, 0, false) },
                 { "fsqrt", new InstructionInfo("Floating Stack Square Root", "fsqrt", 0x0286, true, true, 0, false) }
             };
-        }
     }
 }

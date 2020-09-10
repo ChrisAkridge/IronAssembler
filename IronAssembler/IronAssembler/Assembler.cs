@@ -14,7 +14,7 @@ namespace IronAssembler
     internal static class Assembler
     {
         private const int MaximumInstructionLength = 27;
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         #region Operand Matching Regexes
         // Matches a memory address of the form 0x0011223344556677.
@@ -77,7 +77,7 @@ namespace IronAssembler
 
         private static AssembledInstruction AssembleInstruction(ParsedInstruction instruction)
         {
-            List<byte> bytes = new List<byte>(MaximumInstructionLength);
+            var bytes = new List<byte>(MaximumInstructionLength);
             byte flagsByte = 0;
 
             var info = InstructionTable.Lookup(instruction.Mnemonic);
@@ -279,7 +279,6 @@ namespace IronAssembler
         private static void AssembleRegisterWithPointerAndOffset(IList<byte> bytes,
             string operand)
         {
-            int offset;
             char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
             var parts = operand.Split(offsetSignChar);
 
@@ -288,7 +287,7 @@ namespace IronAssembler
 
             byte register = registerName.ParseRegister();
 
-            if (!int.TryParse(offsetString, out offset))
+            if (!int.TryParse(offsetString, out var offset))
             {
                 throw new AssemblerException($"The offset {offsetString} is not valid.");
             }
@@ -302,8 +301,7 @@ namespace IronAssembler
         private static void AssembleNumericLiteral(IList<byte> bytes, string operand,
             OperandSize size)
         {
-            ulong literal;
-            if (!ulong.TryParse(operand, out literal))
+            if (!ulong.TryParse(operand, out var literal))
             {
                 throw new AssemblerException($"The operand {literal} is not valid.");
             }

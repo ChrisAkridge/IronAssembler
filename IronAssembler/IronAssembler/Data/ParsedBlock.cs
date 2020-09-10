@@ -6,17 +6,17 @@ using System.Threading.Tasks;
 
 namespace IronAssembler.Data
 {
-	internal sealed class ParsedBlock
-	{
-		private List<ParsedInstruction> instructions;	
+    internal sealed class ParsedBlock
+    {
+        private readonly List<ParsedInstruction> instructions;	
 
-		public string Name { get; }
-		public IReadOnlyList<ParsedInstruction> Instructions => instructions.AsReadOnly();
+        public string Name { get; }
+        public IReadOnlyList<ParsedInstruction> Instructions => instructions.AsReadOnly();
 
-		public ParsedBlock(string name, IEnumerable<ParsedInstruction> instructions)
-		{
-			Name = name;
-			this.instructions = instructions.ToList();
-		}
-	}
+        public ParsedBlock(string name, IEnumerable<ParsedInstruction> instructions)
+        {
+            Name = name;
+            this.instructions = instructions.ToList();
+        }
+    }
 }

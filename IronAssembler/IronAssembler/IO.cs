@@ -9,7 +9,7 @@ namespace IronAssembler
 {
     internal static class IO
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         internal static List<string> SplitInputByLine(string input)
         {

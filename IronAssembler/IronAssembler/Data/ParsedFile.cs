@@ -8,7 +8,7 @@ namespace IronAssembler.Data
 {
     internal sealed class ParsedFile
     {
-        private List<ParsedBlock> blocks;
+        private readonly List<ParsedBlock> blocks;
 
         public IReadOnlyList<ParsedBlock> Blocks => blocks.AsReadOnly();
         public ParsedStringTable StringTable { get; }

@@ -20,18 +20,18 @@ namespace IronAssembler
 
         internal static byte[] LinkFile(AssembledFile file, ParsedStringTable table)
         {
-            IDictionary<string, ulong> blockAddresses = GetBlockAddresses(file.Blocks, file.SizeOfGlobalVariableBlock,
+            var blockAddresses = GetBlockAddresses(file.Blocks, file.SizeOfGlobalVariableBlock,
                 out ulong allBlocksSize);
             
             var stringsTableAddress = HeaderSize + (ulong)file.SizeOfGlobalVariableBlock + allBlocksSize;
             var stringAddresses =
                 GetStringAddresses(table, stringsTableAddress);
-            IList<AssembledBlock> rewrittenBlocks = RewritePlaceholderAddresses(file.Blocks, blockAddresses, stringAddresses);
-            byte[] blockBytes = EmitBlocks(rewrittenBlocks);
-            byte[] header = EmitHeader(file.SizeOfGlobalVariableBlock);
+            var rewrittenBlocks = RewritePlaceholderAddresses(file.Blocks, blockAddresses, stringAddresses);
+            var blockBytes = EmitBlocks(rewrittenBlocks);
+            var header = EmitHeader(file.SizeOfGlobalVariableBlock);
             var globals = new byte[file.SizeOfGlobalVariableBlock];
 
-            byte[] stringsTable = AssembleStringsTable(table, stringsTableAddress);
+            var stringsTable = AssembleStringsTable(table, stringsTableAddress);
 
             return header.Concat(globals).Concat(blockBytes.Concat(stringsTable)).ToArray();
         }
@@ -42,7 +42,7 @@ namespace IronAssembler
             var addresses = new Dictionary<string, ulong>(blocks.Count);
 
             ulong blockSizeSum = HeaderSize + (ulong)sizeOfGlobals;
-            foreach (AssembledBlock block in blocks)
+            foreach (var block in blocks)
             {
                 addresses.Add(block.Name, blockSizeSum);
                 blockSizeSum += block.BlockSizeInBytes;
@@ -69,7 +69,7 @@ namespace IronAssembler
             return addresses;
         }
 
-        private static IList<AssembledBlock> RewritePlaceholderAddresses(IReadOnlyList<AssembledBlock> blocks,
+        private static IList<AssembledBlock> RewritePlaceholderAddresses(IReadOnlyCollection<AssembledBlock> blocks,
             IDictionary<string, ulong> blockAddresses,
             IDictionary<int, ulong> stringAddresses)
         {
@@ -89,7 +89,7 @@ namespace IronAssembler
                         continue;
                     }
 
-                    byte[] rewrittenBytes = instruction.Bytes.ToArray();
+                    var rewrittenBytes = instruction.Bytes.ToArray();
 
                     if (instruction.Operand1Label != null)
                     {
@@ -137,27 +137,24 @@ namespace IronAssembler
             return rewrittenBlocks;
         }
 
-        private static byte[] EmitBlocks(IList<AssembledBlock> blocks)
+        private static IEnumerable<byte> EmitBlocks(IList<AssembledBlock> blocks)
         {
             var bytes = new List<byte>(blocks.Sum(b => (int)b.BlockSizeInBytes));
 
-            foreach (AssembledBlock block in blocks)
+            foreach (var instruction in blocks.SelectMany(block => block.Instructions))
             {
-                foreach (AssembledInstruction instruction in block.Instructions)
-                {
-                    bytes.AddRange(instruction.Bytes);
-                }
+                bytes.AddRange(instruction.Bytes);
             }
 
             return bytes.ToArray();
         }
 
-        private static byte[] AssembleStringsTable(ParsedStringTable table, ulong stringsTableAddress)
+        private static IEnumerable<byte> AssembleStringsTable(ParsedStringTable table, ulong stringsTableAddress)
         {
-            List<byte[]> utf8Strings = table.Strings.Select(s => Encoding.UTF8.GetBytes(s)).ToList();
+            var utf8Strings = table.Strings.Select(s => Encoding.UTF8.GetBytes(s)).ToList();
             var bytes = new List<byte>();
             
-            foreach (byte[] utf8String in utf8Strings)
+            foreach (var utf8String in utf8Strings)
             {
                 bytes.WriteIntLittleEndian((uint)utf8String.Length);
                 bytes.AddRange(utf8String);
@@ -166,7 +163,7 @@ namespace IronAssembler
             return bytes.ToArray();
         }
 
-        private static byte[] EmitHeader(int globalsSize)
+        private static IEnumerable<byte> EmitHeader(int globalsSize)
         {
             var bytes = new List<byte>(20);
             bytes.WriteIntLittleEndian(MagicNumber);

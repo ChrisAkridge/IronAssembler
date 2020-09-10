@@ -11,7 +11,7 @@ namespace IronAssembler.Data
     /// </summary>
     internal sealed class AssembledInstruction
     {
-        private List<byte> bytes;
+        private readonly List<byte> bytes;
 
         /// <summary>
         /// Gets a read-only list of bytes that make up this instruction.
@@ -44,6 +44,9 @@ namespace IronAssembler.Data
         /// <param name="operand1Label">The label of the first operand.</param>
         /// <param name="operand2Label">The label of the second operand.</param>
         /// <param name="operand3Label">The label of the third operand.</param>
+        /// <param name="operand1StringIndex">The string table index of the first operand, or -1 if this operand is not a string table index.</param>
+        /// <param name="operand2StringIndex">The string table index of the second operand, or -1 if this operand is not a string table index.</param>
+        /// <param name="operand3StringIndex">The string table index of the third operand, or -1 if this operand is not a string table index.</param>
         public AssembledInstruction(IEnumerable<byte> bytes,
             string operand1Label = null,
             string operand2Label = null,
