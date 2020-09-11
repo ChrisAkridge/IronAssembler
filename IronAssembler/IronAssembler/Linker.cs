@@ -62,7 +62,7 @@ namespace IronAssembler
             {
                 var stringEntry = stringTable.Strings[i];
                 int utf8ByteCount = 4 + Encoding.UTF8.GetByteCount(stringEntry);
-                addresses.Add(i, currentAddress + (ulong)utf8ByteCount);
+                addresses.Add(i, currentAddress);
                 currentAddress += (ulong)utf8ByteCount;
             }
 
