@@ -186,13 +186,13 @@ namespace IronAssembler
             {
                 case OperandType.MemoryAddress:
                 case OperandType.MemoryPointerAddress:
-                case OperandType.Label:
-                case OperandType.StringTableEntry:
                     return 0;
                 case OperandType.Register:
                 case OperandType.RegisterWithPointer:
                 case OperandType.RegisterWithPointerAndOffset:
                     return 1;
+                case OperandType.Label:
+                case OperandType.StringTableEntry:
                 case OperandType.NumericLiteral:
                     return 2;
                 default:

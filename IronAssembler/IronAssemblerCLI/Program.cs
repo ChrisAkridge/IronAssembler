@@ -55,8 +55,6 @@ namespace IronAssemblerCLI
             {
                 Console.WriteLine("The arguments you provided could not be parsed.");
             }
-
-            Console.ReadKey();
         }
 
         static string ReadInputFile(string inputFilePath)
