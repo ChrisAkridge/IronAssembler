@@ -127,18 +127,17 @@ namespace IronAssembler
                     {
                         throw new ParsingException("The strings table had no entries.", i);
                     }
-                    else { break; }
+
+                    break;
                 }
-                else
+
+                int expectedStringTableIndex = i - (stringsLabelIndex + 1);
+                string entry = ParseString(line, out var reportedStringTableIndex, i);
+                if (reportedStringTableIndex != expectedStringTableIndex)
                 {
-                    int expectedStringTableIndex = i - (stringsLabelIndex + 1);
-                    string entry = ParseString(line, out var reportedStringTableIndex, i);
-                    if (reportedStringTableIndex != expectedStringTableIndex)
-                    {
-                        throw new ParsingException($"A string in the table has the wrong index; expected {i} but got {reportedStringTableIndex}.", i);
-                    }
-                    parsedStrings.Add(entry);
+                    throw new ParsingException($"A string in the table has the wrong index; expected {i} but got {reportedStringTableIndex}.", i);
                 }
+                parsedStrings.Add(entry);
             }
 
             logger.Trace($"Parsed strings table ({parsedStrings.Count} entries)");
@@ -147,8 +146,12 @@ namespace IronAssembler
 
         private static ParsedInstruction ParseInstruction(string instructionLine, int lineNumber)
         {
-            var parts = instructionLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(s => s.Trim()).ToArray();
+            var parts = instructionLine.Split(new[]
+                {
+                    ' '
+                }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .ToArray();
 
             if (!InstructionTable.TryLookup(parts[0].ToLowerInvariant(), out var info))
             {
@@ -316,7 +319,7 @@ namespace IronAssembler
                                 if (i + 1 + codePointLength > tableString.Length - 1)
                                 {
                                     throw new ParsingException(
-                                        $"An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.",
+                                        "An entry in the string table ends in a Unicode escape sequence, but there aren't enough hexadecimal digits to determine the codepoint.",
                                         lineNumber);
                                 }
                                 string codePointString = tableString.Substring(i + 2, codePointLength);

@@ -57,7 +57,7 @@ namespace IronAssemblerCLI
             }
         }
 
-        static string ReadInputFile(string inputFilePath)
+        private static string ReadInputFile(string inputFilePath)
         {
             if (!File.Exists(inputFilePath))
             {

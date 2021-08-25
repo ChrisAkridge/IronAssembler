@@ -70,7 +70,11 @@ namespace IronAssembler
             return tokens.Length == 1 || (tokens.Length == 2 && tokens[1].IsSizeOperand());
         }
 
-        public static bool IsLabelLine(this string line) => line.EndsWith(":", StringComparison.Ordinal);
+        public static bool IsLabelLine(this string line) =>
+            line.EndsWith(":", StringComparison.Ordinal) && !line.ToLowerInvariant().Contains("strings:");
+
+        public static bool IsStringsTableLabelLine(this string line) => line.ToLowerInvariant().Contains("strings:");
+
         public static bool ContainsStringLiteral(this string line) => line.Contains("\"");
 
         public static bool IsAllASCIILetters(this string s)

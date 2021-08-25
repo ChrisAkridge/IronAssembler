@@ -53,6 +53,10 @@ namespace IronAssembler
                     translatedLines.Add(line);
                     continue;
                 }
+                else if (tokens[0].IsStringsTableLabelLine())
+                {
+                    continue;
+                }
 
                 var lineBuilder = new StringBuilder();
                 int i = tokens.Length - 1;
