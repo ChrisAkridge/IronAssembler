@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using IronAssembler.Data;
 using NLog;
 
@@ -123,7 +122,7 @@ namespace IronAssembler
 
         private static string TranslateRegisterWithHexadecimalOffset(string operand)
         {
-            char offsetSignChar = (operand.Contains("+")) ? '+' : '-';
+            var offsetSignChar = (operand.Contains("+")) ? '+' : '-';
             var operandParts = operand.Split(offsetSignChar);
 
             long offset = (long)operandParts[1].Substring(2).ParseAddress();
@@ -155,12 +154,9 @@ namespace IronAssembler
         {
             string numberString = operand.Substring(2);
 
-            if (!ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var number))
-            {
-                throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
-            }
-
-            return number.ToString();
+            return ulong.TryParse(numberString, NumberStyles.HexNumber, CultureInfo.CurrentCulture, out var number)
+                ? number.ToString()
+                : throw new TranslationException($"The hexadecimal number {operand} couldn't be parsed.");
         }
 
         private static bool IsFloatingPointLiteral(string operand) => operand.EntireStringMatchesRegex(FloatingPointNumberRegex);
@@ -209,9 +205,9 @@ namespace IronAssembler
                         switch (operandParts[0])
                         {
                             case "single" when sizeToken != "dword":
-                                throw new TranslationException($"A single-precision floating point literal was used when the instruction size is not DWORD.");
+                                throw new TranslationException("A single-precision floating point literal was used when the instruction size is not DWORD.");
                             case "double" when sizeToken != "qword":
-                                throw new TranslationException($"A double-precision floating point literal was used when the instruction size is not QWORD.");
+                                throw new TranslationException("A double-precision floating point literal was used when the instruction size is not QWORD.");
                         }
                     }
                     else
@@ -265,8 +261,9 @@ namespace IronAssembler
                 {
                     if (line[j] != '\"') { continue; }
 
-                    if (j == 0) { throw new TranslationException($"A string literal cannot start an instruction."); }
-                    else { quoteIndices.Add(j); }
+                    if (j == 0) { throw new TranslationException("A string literal cannot start an instruction."); }
+
+                    quoteIndices.Add(j);
                 }
 
                 if (!quoteIndices.Any()) { continue; }
@@ -310,7 +307,10 @@ namespace IronAssembler
 
         private static IEnumerable<string> BuildStringsTable(IEnumerable<string> stringsTable)
         {
-            var stringsTableLines = new List<string> {"strings:"};
+            var stringsTableLines = new List<string>
+            {
+                "strings:"
+            };
 
             stringsTableLines.AddRange(stringsTable.Select((t, i) => i.ToString() + ": " + t));
 

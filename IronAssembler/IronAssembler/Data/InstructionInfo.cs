@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace IronAssembler.Data
+﻿namespace IronAssembler.Data
 {
     /// <summary>
     /// Represents the information for an IronArc instruction.
@@ -45,6 +39,8 @@ namespace IronAssembler.Data
         /// Gets a value indicating whether this instruction can use labels as operands.
         /// </summary>
         public bool CanUseLabels { get; }
+        
+        public OperandSize?[] ImplicitSizes { get; }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InstructionInfo"/> class.
@@ -56,8 +52,9 @@ namespace IronAssembler.Data
         /// <param name="needsSize">A value indicating whether this instruction needs a defined operand size.</param>
         /// <param name="operandCount">A value indicating how many operands (0 to 3) this instruction needs.</param>
         /// <param name="canUseLabels">A value indicating whether this instruction can use labels as operands.</param>
+        /// <param name="implicitSizes">An optional array that specifies the implicit sizes of the operands. Set to null if no operand have implicit sizes, set array elements to null if that operand has no implicit size.</param>
         public InstructionInfo(string properName, string mnemonic, ushort opcode, bool needsFlags,
-            bool needsSize, int operandCount, bool canUseLabels)
+            bool needsSize, int operandCount, bool canUseLabels, OperandSize?[] implicitSizes = null)
         {
             ProperName = properName;
             Mnemonic = mnemonic;
@@ -66,6 +63,7 @@ namespace IronAssembler.Data
             NeedsSize = needsSize;
             OperandCount = operandCount;
             CanUseLabels = canUseLabels;
+            ImplicitSizes = implicitSizes ?? new OperandSize?[operandCount];
         }
 
         public override string ToString() => Mnemonic;

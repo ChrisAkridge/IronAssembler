@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 // ReSharper disable BadExpressionBracesLineBreaks
 
 namespace IronAssembler.Data
@@ -71,6 +68,28 @@ namespace IronAssembler.Data
                 { "pop", new InstructionInfo("Pop from Stack", "pop", 0x0103, true, true, 1, false) },
                 { "arrayread", new InstructionInfo("Read Array Value", "arrayread", 0x0104, true, true, 1, false) },
                 { "arraywrite", new InstructionInfo("Write Array Value", "arraywrite", 0x0105, true, true, 2, false) },
+                { "ctxcreate", new InstructionInfo("Create Context", "ctxcreate", 0x0106, false, false, 1, false, new OperandSize?[]
+                {
+                    OperandSize.QWord
+                }) },
+                { "ctxdestroy", new InstructionInfo("Destroy Context", "ctxdestroy", 0x0107, false, false, 1, false, new OperandSize?[]
+                {
+                    OperandSize.DWord
+                }) },
+                { "ctxswitch", new InstructionInfo("Context Switch", "ctxswitch", 0x0108, false, false, 1, false, new OperandSize?[]
+                {
+                    OperandSize.DWord
+                }) },
+                { "ctxdest", new InstructionInfo("Set Destination Context", "ctxdest", 0x0109, false, false, 1, false, new OperandSize?[]
+                {
+                    OperandSize.DWord
+                }) },
+                { "ctxmov", new InstructionInfo("Move Memory to Context", "ctxmov", 0x010A, false, false, 3, false, new OperandSize?[]
+                {
+                    OperandSize.QWord,
+                    OperandSize.QWord,
+                    OperandSize.DWord
+                }) },
 
                 // Integral/Bitwise Operations (0x020*)
                 { "add", new InstructionInfo("Stack Addition", "add", 0x0200, true, true, 0, false) },

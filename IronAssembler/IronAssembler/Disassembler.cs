@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using IronAssembler.Data;
 
 namespace IronAssembler
@@ -94,6 +93,7 @@ namespace IronAssembler
             }
         }
 
+        [SuppressMessage("ReSharper", "MultipleStatementsOnOneLine")]
         public static string DisassembleInstruction(BinaryReader memory, out int instructionLength,
             out string instructionBytes)
         {

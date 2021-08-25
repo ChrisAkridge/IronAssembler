@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using NLog;
 
 namespace IronAssembler
@@ -17,7 +15,7 @@ namespace IronAssembler
 
             if (string.IsNullOrEmpty(input) || string.IsNullOrWhiteSpace(input))
             {
-                throw new ArgumentException($"The provided assembly file had no content.");
+                throw new ArgumentException("The provided assembly file had no content.");
             }
 
             // https://stackoverflow.com/a/25196003/2709212

@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace IronAssembler
 {
@@ -56,7 +55,10 @@ namespace IronAssembler
         }
 
         public static string[] SplitInstructionLine(this string instructionLine) =>
-            instructionLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            instructionLine.Split(new[]
+            {
+                ' ', '\t'
+            }, StringSplitOptions.RemoveEmptyEntries);
 
         public static bool IsSizeOperand(this string s)
         {
@@ -66,7 +68,7 @@ namespace IronAssembler
 
         public static bool IsOperandlessInstruction(this string instructionLine)
         {
-            string[] tokens = SplitInstructionLine(instructionLine);
+            var tokens = SplitInstructionLine(instructionLine);
             return tokens.Length == 1 || (tokens.Length == 2 && tokens[1].IsSizeOperand());
         }
 
@@ -94,15 +96,10 @@ namespace IronAssembler
             return address;
         }
 
-        public static byte ParseRegister(this string s)
-        {
-            if (!Enum.TryParse(s, true, out Register register))
-            {
-                throw new AssemblerException($"The register {s} does not exist.");
-            }
-
-            return (byte)register;
-        }
+        public static byte ParseRegister(this string s) =>
+            Enum.TryParse(s, true, out Register register)
+                ? (byte)register
+                : throw new AssemblerException($"The register {s} does not exist.");
 
         // https://stackoverflow.com/a/41176852/2709212
         public static IEnumerable<string> GetLines(this string str, bool removeEmptyLines = false)

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using IronAssembler.Data;
 using NLog;
 
@@ -90,12 +87,19 @@ namespace IronAssembler
 
             flagsByte |= (byte)((int)instruction.Size << 6);
 
-            string[] operandLabels = new string[3];
-            int[] stringTableIndices = { -1, -1, -1 };
+            var operandLabels = new string[3];
+            int[] stringTableIndices =
+            {
+                -1, -1, -1
+            };
+            var operand1Size = info.ImplicitSizes[0] ?? instruction.Size;
+            var operand2Size = info.ImplicitSizes[1] ?? instruction.Size;
+            var operand3Size = info.ImplicitSizes[2] ?? instruction.Size;
+            
             if (instruction.Operand1Text != null)
             {
                 var type = GetOperandType(instruction.Operand1Text);
-                AssembleOperand(bytes, instruction.Operand1Text, type, instruction.Size,
+                AssembleOperand(bytes, instruction.Operand1Text, type, operand1Size,
                     0, out operandLabels[0], out stringTableIndices[0]);
 
                 flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 4);
@@ -104,7 +108,7 @@ namespace IronAssembler
             if (instruction.Operand2Text != null)
             {
                 var type = GetOperandType(instruction.Operand2Text);
-                AssembleOperand(bytes, instruction.Operand2Text, type, instruction.Size,
+                AssembleOperand(bytes, instruction.Operand2Text, type, operand2Size,
                     1, out operandLabels[1], out stringTableIndices[1]);
 
                 flagsByte |= (byte)(GetFlagsBitsFromOperandType(type) << 2);
@@ -114,7 +118,7 @@ namespace IronAssembler
             {
                 var type = GetOperandType(instruction.Operand3Text);
                 AssembleOperand(bytes, instruction.Operand3Text, type, 
-                    (instruction.Mnemonic != "movln") ? instruction.Size : OperandSize.DWord,
+                    (instruction.Mnemonic != "movln") ? operand3Size : OperandSize.DWord,
                     2, out operandLabels[2], out stringTableIndices[2]);
 
                 flagsByte |= GetFlagsBitsFromOperandType(type);
@@ -244,7 +248,7 @@ namespace IronAssembler
 
             if (address >= 0x8000_0000_0000_0000)
             {
-                throw new AssemblerException($"No memory address may be above 0x8000000000000000.");
+                throw new AssemblerException("No memory address may be above 0x8000000000000000.");
             }
 
             bytes.WriteLongLittleEndian(address);
@@ -256,19 +260,19 @@ namespace IronAssembler
 
             if (address >= 0x8000_0000_0000_0000)
             {
-                throw new AssemblerException($"No memory address may be above 0x8000000000000000.");
+                throw new AssemblerException("No memory address may be above 0x8000000000000000.");
             }
 
             address |= 0x8000_0000_0000_0000;
             bytes.WriteLongLittleEndian(address);
         }
 
-        private static void AssembleRegister(IList<byte> bytes, string operand)
+        private static void AssembleRegister(ICollection<byte> bytes, string operand)
         {
             bytes.Add(operand.ParseRegister());
         }
 
-        private static void AssembleRegisterWithPointer(IList<byte> bytes, string operand)
+        private static void AssembleRegisterWithPointer(ICollection<byte> bytes, string operand)
         {
             byte register = operand.Substring(1).ParseRegister();
 
@@ -347,8 +351,6 @@ namespace IronAssembler
                     break;
                 case 2:
                     bytes.WriteLongLittleEndian(0xEEEE_EEEE_EEEE_EEEE);
-                    break;
-                default:
                     break;
             }
         }
