@@ -139,5 +139,10 @@ namespace IronAssembler
 
             return sb;
         }
+
+        public static T TryGet<T>(this T[] array, int index) =>
+            index >= 0 && index < array.Length
+                ? array[index]
+                : default(T);
     }
 }

@@ -92,9 +92,9 @@ namespace IronAssembler
             {
                 -1, -1, -1
             };
-            var operand1Size = info.ImplicitSizes[0] ?? instruction.Size;
-            var operand2Size = info.ImplicitSizes[1] ?? instruction.Size;
-            var operand3Size = info.ImplicitSizes[2] ?? instruction.Size;
+            var operand1Size = info.ImplicitSizes.TryGet(0) ?? instruction.Size;
+            var operand2Size = info.ImplicitSizes.TryGet(1) ?? instruction.Size;
+            var operand3Size = info.ImplicitSizes.TryGet(2) ?? instruction.Size;
             
             if (instruction.Operand1Text != null)
             {
