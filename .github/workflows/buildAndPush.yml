@@ -30,6 +30,6 @@ jobs:
       - name: Create NuGet Package
         run: dotnet pack .\IronAssembler\IronAssembler\IronAssembler.csproj -c Release
       - name: Push to NuGet
-        run: dotnet nuget push .\IronAssembler\IronAssembler\bin\Release\*.nupkg -k ${NUGET_TOKEN} --skip-duplicate --no-symbols
+        run: dotnet nuget push .\IronAssembler\IronAssembler\bin\Release\*.nupkg -k ${NUGET_TOKEN} --skip-duplicate --no-symbols --source https://api.nuget.org/v3/index.json
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_PUSH }}
