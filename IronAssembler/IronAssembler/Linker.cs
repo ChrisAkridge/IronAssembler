@@ -109,13 +109,13 @@ namespace IronAssembler
 
                     if (instruction.Operand1StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand1StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)(uint)instruction.Operand1StringIndex;
                         RewritePlaceholderAddress(rewrittenBytes, placeholder, stringAddresses[instruction.Operand1StringIndex]);
                     }
 
                     if (instruction.Operand2StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand2StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)(uint)instruction.Operand2StringIndex;
 
                         RewritePlaceholderAddress(rewrittenBytes, placeholder,
                             stringAddresses[instruction.Operand2StringIndex]);
@@ -123,7 +123,7 @@ namespace IronAssembler
 
                     if (instruction.Operand3StringIndex >= 0)
                     {
-                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)instruction.Operand3StringIndex;
+                        ulong placeholder = 0xAAAAAAAA00000000UL | (ulong)(uint)instruction.Operand3StringIndex;
 
                         RewritePlaceholderAddress(rewrittenBytes, placeholder,
                             stringAddresses[instruction.Operand3StringIndex]);

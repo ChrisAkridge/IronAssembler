@@ -8,8 +8,6 @@ namespace IronAssembler
         public TranslationException() { }
         public TranslationException(string message) : base(message) { }
         public TranslationException(string message, Exception inner) : base(message, inner) { }
-        protected TranslationException(System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 
     [Serializable]
@@ -21,8 +19,6 @@ namespace IronAssembler
         public ParsingException(string message, int lineNumber) : base($"{message} (line {lineNumber})") { }
         public ParsingException(string message, int lineNumber, Exception inner) : base(
             $"{message} (line {lineNumber})", inner) { }
-        protected ParsingException(System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 
     [Serializable]
@@ -31,7 +27,5 @@ namespace IronAssembler
         public AssemblerException() { }
         public AssemblerException(string message) : base(message) { }
         public AssemblerException(string message, Exception inner) : base(message, inner) { }
-        protected AssemblerException(System.Runtime.Serialization.SerializationInfo info,
-          System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
 }
