@@ -1,0 +1,35 @@
+name: Build for .NET 8.0
+
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+    branches:
+      - 'master'
+  workflow_dispatch:
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build IronAssembler
+        run:  dotnet build .\IronAssembler\IronAssembler\IronAssembler.csproj -c Release
+      - name: Create NuGet Package
+        run: dotnet pack .\IronAssembler\IronAssembler\IronAssembler.csproj -c Release
+      - name: Push to NuGet
+        run: dotnet nuget push .\IronAssembler\IronAssembler\bin\Release\*.nupkg -k ${NUGET_TOKEN} --skip-duplicate --no-symbols
+        env:
+          NUGET_TOKEN: ${{ secrets.NUGET_PUSH }}
