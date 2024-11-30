@@ -19,9 +19,13 @@
     <AssemblyTitle>IronAssembler</AssemblyTitle>
     <Description>An assembler for the IronArc platform.</Description>
     <Product>IronAssembler</Product>
-    <Copyright>Copyright © 2015-2018 Chris Akridge</Copyright>
+    <Copyright>Copyright © 2015-2024 Chris Akridge</Copyright>
     <AssemblyVersion>0.1.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <NeutralLanguage>en-US</NeutralLanguage>
+    <Title>IronAssembler</Title>
+    <PackageReadmeFile></PackageReadmeFile>
+    <RepositoryUrl>https://github.com/ChrisAkridge/IronAssembler</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 </Project>
